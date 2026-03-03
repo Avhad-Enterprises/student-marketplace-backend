@@ -1,0 +1,113 @@
+import DB from "@/database";
+
+export class StatusTrackingService {
+  public async findByStudentId(studentId: string) {
+    return await DB("status_history as sh")
+      .join("students as s", "sh.student_db_id", "s.id")
+      .select("sh.*", "s.first_name", "s.last_name")
+      .where("s.student_id", studentId)
+      .orderBy("sh.created_at", "desc");
+  }
+
+  public async findAll(stage?: string, risk_level?: string, search?: string) {
+    const baseQuery = DB("students as s").select(
+      "s.id as db_id",
+      "s.student_id",
+      "s.first_name",
+      "s.last_name",
+      "s.risk_level",
+      "s.current_stage as stage",
+      "s.current_country as country",
+      "s.assigned_counselor as counselor"
+    );
+
+    if (stage) baseQuery.where("s.current_stage", stage);
+    if (risk_level) baseQuery.where("s.risk_level", risk_level);
+    if (search) {
+      const like = `%${search}%`;
+      baseQuery.where(function () {
+        this.where("s.first_name", "ILIKE", like).orWhere("s.last_name", "ILIKE", like).orWhere("s.student_id", "ILIKE", like);
+      });
+    }
+
+    const students = await baseQuery;
+
+    // for each student, fetch latest status_history
+    for (const st of students) {
+      const last = await DB("status_history").where("student_db_id", st.db_id).orderBy("created_at", "desc").first();
+      st.sub_status = last ? last.sub_status : null;
+      st.last_update = last ? last.created_at : null;
+    }
+
+    // sort by last_update desc nulls last
+    students.sort((a: any, b: any) => {
+      if (!a.last_update) return 1;
+      if (!b.last_update) return -1;
+      return new Date(b.last_update).getTime() - new Date(a.last_update).getTime();
+    });
+
+    return students;
+  }
+
+  public async updateStatus(studentDbId: number, stage: string, subStatus: string, notes: string, changedBy: string) {
+    await DB.transaction(async (trx) => {
+      await trx("status_history").insert({ student_db_id: studentDbId, stage, sub_status: subStatus, notes, changed_by: changedBy });
+      await trx("students").where("id", studentDbId).update({ current_stage: stage, updated_at: DB.fn.now() });
+    });
+
+    return { message: "Status updated successfully" };
+  }
+
+  public async getMetrics() {
+    const applicationCount = await DB("students").where("current_stage", "application").count("* as count").first();
+    const visaCount = await DB("students").where("current_stage", "visa").count("* as count").first();
+    const completedCount = await DB("students").where("current_stage", "completed").count("* as count").first();
+
+    // For Awaiting Decision and Blocked, we need to check sub_status in the latest status_history for each student
+    // This is more efficiently done by querying the latest status for students in relevant stages
+    const awaitingDecision = await DB("students as s")
+      .join(
+        DB("status_history")
+          .select("student_db_id", "sub_status")
+          .distinctOn("student_db_id")
+          .orderBy("student_db_id")
+          .orderBy("created_at", "desc")
+          .as("latest_status"),
+        "s.id",
+        "latest_status.student_db_id"
+      )
+      .where(function () {
+        this.where("latest_status.sub_status", "ILIKE", "%Awaiting%")
+          .orWhere("latest_status.sub_status", "ILIKE", "%Review%");
+      })
+      .count("* as count")
+      .first();
+
+    const blockedCount = await DB("students as s")
+      .join(
+        DB("status_history")
+          .select("student_db_id", "sub_status")
+          .distinctOn("student_db_id")
+          .orderBy("student_db_id")
+          .orderBy("created_at", "desc")
+          .as("latest_status"),
+        "s.id",
+        "latest_status.student_db_id"
+      )
+      .where(function () {
+        this.where("latest_status.sub_status", "ILIKE", "%Blocked%")
+          .orWhere("latest_status.sub_status", "ILIKE", "%Stalled%")
+          .orWhere("latest_status.sub_status", "ILIKE", "%Rejected%");
+      })
+      .count("* as count")
+      .first();
+
+    return {
+      applicationCount: parseInt(((applicationCount as any) || {}).count || "0"),
+      visaCount: parseInt(((visaCount as any) || {}).count || "0"),
+      awaitingDecisionCount: parseInt(((awaitingDecision as any) || {}).count || "0"),
+      completedCount: parseInt(((completedCount as any) || {}).count || "0"),
+      blockedCount: parseInt(((blockedCount as any) || {}).count || "0")
+    };
+  }
+}
