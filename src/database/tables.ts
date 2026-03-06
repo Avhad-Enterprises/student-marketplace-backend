@@ -29,6 +29,8 @@ export const Tables = {
   ENQUIRIES: "enquiries",
   EXPERTS: "experts",
   BLOGS: "blogs",
+  SYSTEM_SETTINGS: "system_settings",
+  NOTIFICATION_SETTINGS: "notification_settings",
 };
 
 /**
@@ -38,6 +40,44 @@ export const Tables = {
 export async function initializeTables() {
   try {
     await DB.raw(`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        id SERIAL PRIMARY KEY,
+        platform_name VARCHAR(255) DEFAULT 'Student Marketplace',
+        support_email VARCHAR(255) DEFAULT 'support@studentmarketplace.com',
+        primary_currency VARCHAR(10) DEFAULT 'USD',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS notification_settings (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        enabled BOOLEAN DEFAULT TRUE,
+        type VARCHAR(50) DEFAULT 'email',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for System Settings if empty
+      INSERT INTO system_settings (platform_name, support_email, primary_currency)
+      SELECT 'Student Marketplace', 'support@studentmarketplace.com', 'USD'
+      WHERE NOT EXISTS (SELECT 1 FROM system_settings);
+
+      -- Initial Seed for Notification Settings if empty
+      INSERT INTO notification_settings (key, title, description, enabled, type)
+      SELECT 'email-leads', 'New Leads', 'Receive an email when a new lead is assigned to you', true, 'email'
+      WHERE NOT EXISTS (SELECT 1 FROM notification_settings WHERE key = 'email-leads');
+
+      INSERT INTO notification_settings (key, title, description, enabled, type)
+      SELECT 'email-bookings', 'Booking Confirmations', 'Get notified when a student confirms a booking', true, 'email'
+      WHERE NOT EXISTS (SELECT 1 FROM notification_settings WHERE key = 'email-bookings');
+
+      INSERT INTO notification_settings (key, title, description, enabled, type)
+      SELECT 'push-apps', 'Application Updates', 'Real-time push notifications for application status changes', true, 'push'
+      WHERE NOT EXISTS (SELECT 1 FROM notification_settings WHERE key = 'push-apps');
+
       CREATE TABLE IF NOT EXISTS build_credit (
         id SERIAL PRIMARY KEY,
         reference_id VARCHAR(50) UNIQUE,

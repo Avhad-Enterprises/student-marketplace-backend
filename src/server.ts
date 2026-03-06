@@ -38,6 +38,7 @@ import { BookingRoute } from './routes/booking.route';
 import { EnquiryRoute } from './routes/enquiry.route';
 import { ExpertRoute } from './routes/experts.route';
 import { BlogRoute } from './routes/blogs.route';
+import SystemSettingsRoute from './routes/systemSettings.route';
 
 validateEnv();
 
@@ -73,6 +74,7 @@ const app = new App([
     new EnquiryRoute(),
     new ExpertRoute(),
     new BlogRoute(),
+    new SystemSettingsRoute(),
 ]);
 
 const startServer = async () => {
