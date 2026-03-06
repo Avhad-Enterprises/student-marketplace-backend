@@ -7,6 +7,11 @@ export class CommunicationService {
       .orderBy("created_at", "desc");
   }
 
+  public async findAll() {
+    return await DB("communications")
+      .orderBy("created_at", "desc");
+  }
+
   public async findById(id: string | number) {
     const row = await DB("communications").where("id", id).first();
     return row || null;

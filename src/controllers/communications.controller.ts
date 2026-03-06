@@ -4,6 +4,29 @@ import { CommunicationService } from "@/services/communications.service";
 export class CommunicationController {
   private communicationService = new CommunicationService();
 
+  // GET communication by ID
+  public getCommunicationById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const communication = await this.communicationService.findById(req.params.id);
+      if (!communication) {
+        return res.status(404).json({ error: "Communication not found" });
+      }
+      res.json(communication);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  // GET all communications
+  public getCommunications = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const communications = await this.communicationService.findAll();
+      res.json(communications);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   // GET all communications for a student
   public getCommunicationsByStudentId = async (req: Request, res: Response, next: NextFunction) => {
     try {

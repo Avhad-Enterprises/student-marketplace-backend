@@ -1,6 +1,13 @@
 import DB from "@/database";
 
 export class PaymentService {
+  public async findAll() {
+    return await DB("payments")
+      .leftJoin("students", "payments.student_db_id", "students.id")
+      .select("payments.*", "students.first_name", "students.last_name")
+      .orderBy("payments.created_at", "desc");
+  }
+
   public async findByStudentId(studentDbId: string | number) {
     return await DB("payments").where("student_db_id", studentDbId).orderBy("created_at", "desc");
   }

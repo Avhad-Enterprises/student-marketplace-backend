@@ -4,7 +4,7 @@ async function testLogin() {
     const url = 'http://localhost:5000/login';
     const payload = {
         email: 'admin@example.com',
-        password: 'Admin@123'
+        password: 'password123'
     };
 
     console.log(`🚀 Testing Login API at ${url}...`);

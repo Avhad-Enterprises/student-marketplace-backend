@@ -23,6 +23,12 @@ export const Tables = {
   EMPLOYMENT: "employment",
   FOOD: "food",
   COURSES: "courses",
+  AI_ASSISTANT_SETTINGS: "ai_assistant_settings",
+  AI_FEATURES: "ai_features",
+  BOOKINGS: "bookings",
+  ENQUIRIES: "enquiries",
+  EXPERTS: "experts",
+  BLOGS: "blogs",
 };
 
 /**
@@ -396,8 +402,166 @@ export async function initializeTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-      ALTER TABLE courses ADD COLUMN IF NOT EXISTS learners_count INTEGER DEFAULT 0;
       ALTER TABLE courses ADD COLUMN IF NOT EXISTS rating DECIMAL(3,1) DEFAULT 0;
+
+      CREATE TABLE IF NOT EXISTS ai_assistant_settings (
+        id SERIAL PRIMARY KEY,
+        assistant_name VARCHAR(255) DEFAULT 'Study Abroad Visa Assistant',
+        tagline VARCHAR(255) DEFAULT 'Your intelligent companion for visa guidance',
+        default_language VARCHAR(50) DEFAULT 'en',
+        model_provider VARCHAR(50) DEFAULT 'openai',
+        model_version VARCHAR(50) DEFAULT 'gpt-4-turbo',
+        temperature FLOAT DEFAULT 0.7,
+        response_length VARCHAR(50) DEFAULT 'medium',
+        memory_window VARCHAR(50) DEFAULT '8k',
+        streaming BOOLEAN DEFAULT TRUE,
+        timeout INTEGER DEFAULT 30,
+        retry_attempts INTEGER DEFAULT 3,
+        tone VARCHAR(50) DEFAULT 'friendly',
+        answer_style VARCHAR(50) DEFAULT 'detailed',
+        communication_style VARCHAR(50) DEFAULT 'conversational',
+        confidence_threshold INTEGER DEFAULT 60,
+        confidence_visibility VARCHAR(50) DEFAULT 'internal',
+        escalation_action VARCHAR(50) DEFAULT 'show-button',
+        welcome_message TEXT DEFAULT 'Hello! I am your Study Abroad Visa Assistant. How can I help you today?',
+        guardrails JSONB DEFAULT '{"noLegalAdvice": true, "noGuaranteedApproval": true, "noFinancialGuarantee": true, "noImmigrationConsultancy": true, "noPolicyInterpretation": true}'::JSONB,
+        escalation_triggers JSONB DEFAULT '{"lowConfidence": true, "userRequestsHuman": true, "cannotAnswer": true, "negativeSentiment": true}'::JSONB,
+        formatting_rules JSONB DEFAULT '{"alwaysDisclaimer": true, "showChecklistTable": true, "countryLinks": true, "estimatedTime": true, "ctaButton": true}'::JSONB,
+        status VARCHAR(50) DEFAULT 'online',
+        strict_mode BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS ai_features (
+        id SERIAL PRIMARY KEY,
+        feature_id VARCHAR(50) UNIQUE NOT NULL,
+        "order" INTEGER DEFAULT 0,
+        name VARCHAR(255) NOT NULL,
+        status VARCHAR(50) DEFAULT 'active',
+        show_in_dashboard BOOLEAN DEFAULT TRUE,
+        linked_flow VARCHAR(255),
+        description TEXT,
+        starter_prompt TEXT,
+        usage_30d INTEGER DEFAULT 0,
+        requires_ielts BOOLEAN DEFAULT FALSE,
+        requires_country BOOLEAN DEFAULT FALSE,
+        requires_profile BOOLEAN DEFAULT FALSE,
+        category VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for AI Features if empty
+      INSERT INTO ai_features (feature_id, "order", name, status, linked_flow, description, starter_prompt, usage_30d, category)
+      SELECT 'feat-001', 1, 'University Search', 'active', 'university-finder-flow', 'Help students discover universities that match their profile, preferences, and academic goals.', 'I can help you discover universities that match your profile and goals. What type of program are you interested in?', 1248, 'academic'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_features WHERE feature_id = 'feat-001');
+
+      INSERT INTO ai_features (feature_id, "order", name, status, linked_flow, description, starter_prompt, usage_30d, category)
+      SELECT 'feat-002', 2, 'SOP Review', 'active', 'sop-analysis-flow', 'Share your Statement of Purpose and I''ll provide detailed feedback.', 'Share your Statement of Purpose and I''ll provide detailed feedback.', 856, 'application'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_features WHERE feature_id = 'feat-002');
+
+      INSERT INTO ai_features (feature_id, "order", name, status, linked_flow, description, starter_prompt, usage_30d, category)
+      SELECT 'feat-003', 3, 'Visa Requirements', 'active', 'visa-info-flow', 'Let me guide you through visa requirements for your destination country.', 'Let me guide you through visa requirements for your destination country.', 734, 'visa'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_features WHERE feature_id = 'feat-003');
+
+      INSERT INTO ai_features (feature_id, "order", name, status, linked_flow, description, starter_prompt, usage_30d, category)
+      SELECT 'feat-004', 4, 'Eligibility Check', 'active', 'eligibility-flow', 'I''ll help you understand your eligibility for different universities.', 'I''ll help you understand your eligibility for different universities.', 612, 'academic'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_features WHERE feature_id = 'feat-004');
+
+      INSERT INTO ai_features (feature_id, "order", name, status, linked_flow, description, starter_prompt, usage_30d, category)
+      SELECT 'feat-005', 5, 'Scholarship Finder', 'active', 'scholarship-search-flow', 'Discover scholarships and funding opportunities for your study abroad journey.', 'Discover scholarships and funding opportunities for your study abroad journey.', 489, 'financial'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_features WHERE feature_id = 'feat-005');
+
+      INSERT INTO ai_features (feature_id, "order", name, status, linked_flow, description, starter_prompt, usage_30d, category)
+      SELECT 'feat-006', 6, 'Timeline Planner', 'disabled', 'timeline-generation-flow', 'I''ll create a personalized timeline for your application journey.', 'I''ll create a personalized timeline for your application journey.', 145, 'academic'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_features WHERE feature_id = 'feat-006');
+
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        booking_id VARCHAR(50) UNIQUE NOT NULL,
+        date_time TIMESTAMP NOT NULL,
+        student_name VARCHAR(255) NOT NULL,
+        service VARCHAR(255) NOT NULL,
+        expert VARCHAR(255) NOT NULL,
+        status VARCHAR(50) DEFAULT 'upcoming',
+        mode VARCHAR(50) DEFAULT 'Online',
+        source VARCHAR(50) DEFAULT 'regular',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for Bookings if empty
+      INSERT INTO bookings (booking_id, date_time, student_name, service, expert, status, mode, source)
+      SELECT 'BKG-001', '2025-01-15 10:00:00', 'Emma Wilson', 'Initial Consultation', 'Sarah Johnson', 'upcoming', 'Online', 'regular'
+      WHERE NOT EXISTS (SELECT 1 FROM bookings WHERE booking_id = 'BKG-001');
+
+      INSERT INTO bookings (booking_id, date_time, student_name, service, expert, status, mode, source)
+      SELECT 'BKG-002', '2025-01-16 14:30:00', 'James Chen', 'Concierge Request', 'Mike Davis', 'completed', 'Online', 'concierge'
+      WHERE NOT EXISTS (SELECT 1 FROM bookings WHERE booking_id = 'BKG-002');
+
+      CREATE TABLE IF NOT EXISTS enquiries (
+        id SERIAL PRIMARY KEY,
+        enquiry_id VARCHAR(50) UNIQUE NOT NULL,
+        date_submitted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        student_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        message TEXT,
+        priority VARCHAR(20) DEFAULT 'medium',
+        status VARCHAR(20) DEFAULT 'new',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for Enquiries if empty
+      INSERT INTO enquiries (enquiry_id, student_name, email, subject, message, priority, status)
+      SELECT 'ENQ-001', 'Sarah Miller', 'sarah.m@email.com', 'Visa Application Process', 'I need help with the visa application process.', 'high', 'new'
+      WHERE NOT EXISTS (SELECT 1 FROM enquiries WHERE enquiry_id = 'ENQ-001');
+
+      INSERT INTO enquiries (enquiry_id, student_name, email, subject, message, priority, status)
+      SELECT 'ENQ-002', 'John Davis', 'john.d@email.com', 'Document Requirements', 'What documents are required for my application?', 'medium', 'in-progress'
+      WHERE NOT EXISTS (SELECT 1 FROM enquiries WHERE enquiry_id = 'ENQ-002');
+
+      CREATE TABLE IF NOT EXISTS experts (
+        id SERIAL PRIMARY KEY,
+        expert_id VARCHAR(50) UNIQUE NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        phone VARCHAR(20),
+        specialization VARCHAR(100),
+        experience_years INTEGER DEFAULT 0,
+        rating DECIMAL(3,1) DEFAULT 0,
+        status VARCHAR(50) DEFAULT 'active',
+        avatar_url TEXT,
+        bio TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for Experts if empty
+      INSERT INTO experts (expert_id, full_name, email, specialization, experience_years, rating, status)
+      SELECT 'EXP-001', 'Sarah Johnson', 'sarah.j@example.com', 'Visa & Immigration', 8, 4.9, 'active'
+      WHERE NOT EXISTS (SELECT 1 FROM experts WHERE expert_id = 'EXP-001');
+
+      INSERT INTO experts (expert_id, full_name, email, specialization, experience_years, rating, status)
+      SELECT 'EXP-002', 'Michael Chen', 'm.chen@example.com', 'Academic Counseling', 5, 4.7, 'active'
+      WHERE NOT EXISTS (SELECT 1 FROM experts WHERE expert_id = 'EXP-002');
+
+      CREATE TABLE IF NOT EXISTS blogs (
+        id SERIAL PRIMARY KEY,
+        blog_id VARCHAR(50) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        author VARCHAR(255) NOT NULL,
+        category VARCHAR(100),
+        content TEXT,
+        tags JSONB DEFAULT '[]'::JSONB,
+        status VARCHAR(50) DEFAULT 'draft',
+        visibility VARCHAR(50) DEFAULT 'public',
+        publish_date TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     logger.info("Database tables initialized successfully");

@@ -4,6 +4,16 @@ import { PaymentService } from "@/services/payments.service";
 export class PaymentController {
   private paymentService = new PaymentService();
 
+  // GET all payments
+  public getAllPayments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const payments = await this.paymentService.findAll();
+      res.json(payments);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   // GET all payments for a student
   public getPaymentsByStudentId = async (req: Request, res: Response, next: NextFunction) => {
     try {

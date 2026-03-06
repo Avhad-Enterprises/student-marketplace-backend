@@ -15,6 +15,12 @@ export class CommunicationRoute implements Route {
   private initializeRoutes() {
     this.router.use(authMiddleware);
 
+    // GET all communications
+    this.router.get("/", this.communicationController.getCommunications);
+
+    // GET single communication by ID
+    this.router.get("/detail/:id", this.communicationController.getCommunicationById);
+
     // GET all communications for a student
     this.router.get("/:student_id", this.communicationController.getCommunicationsByStudentId);
 

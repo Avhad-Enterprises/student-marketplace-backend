@@ -32,22 +32,14 @@ import { ForexRoute } from './routes/forex.route';
 import { EmploymentRoute } from './routes/employment.route';
 import { FoodRoute } from './routes/food.route';
 import { CourseRoute } from './routes/course.route';
+import { AiAssistantRoute } from './routes/aiAssistant.route';
+import { AiFeatureRoute } from './routes/aiFeature.route';
+import { BookingRoute } from './routes/booking.route';
+import { EnquiryRoute } from './routes/enquiry.route';
+import { ExpertRoute } from './routes/experts.route';
+import { BlogRoute } from './routes/blogs.route';
 
-console.log('Starting env validation...');
 validateEnv();
-console.log('Env validation complete.');
-
-// Initialize database tables
-console.log('DEBUG: calling initializeTables()...');
-initializeTables().then(() => {
-    console.log('DEBUG: Tables initialized successfully.');
-}).catch(err => {
-    console.error('Failed to initialize tables:', err);
-    process.exit(1);
-});
-
-console.log('DEBUG: Proceeding to initialize App...');
-console.log('Initializing App...');
 
 const app = new App([
     new AuthRoute(),
@@ -75,6 +67,22 @@ const app = new App([
     new EmploymentRoute(),
     new FoodRoute(),
     new CourseRoute(),
+    new AiAssistantRoute(),
+    new AiFeatureRoute(),
+    new BookingRoute(),
+    new EnquiryRoute(),
+    new ExpertRoute(),
+    new BlogRoute(),
 ]);
 
-app.listen();
+const startServer = async () => {
+    try {
+        await initializeTables();
+        app.listen();
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();

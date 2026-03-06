@@ -15,6 +15,9 @@ export class PaymentRoute implements Route {
   private initializeRoutes() {
     this.router.use(authMiddleware);
 
+    // GET all payments
+    this.router.get("/", this.paymentController.getAllPayments);
+
     // GET payment summary for a student (before :studentDbId so it takes priority)
     this.router.get("/:studentDbId/summary", this.paymentController.getPaymentSummary);
 
