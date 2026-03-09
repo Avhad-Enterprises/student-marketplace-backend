@@ -17,5 +17,6 @@ export class AiFeatureRoute implements Routes {
         this.router.post(`/`, authMiddleware, this.aiFeatureController.createFeature);
         this.router.get(`/:id`, authMiddleware, this.aiFeatureController.getFeatureById);
         this.router.post(`/:id`, authMiddleware, this.aiFeatureController.updateFeature);
+        this.router.delete(`/:id`, authMiddleware, this.aiFeatureController.deleteFeature);
     }
 }

@@ -23,6 +23,17 @@ export interface AiAssistantSettings {
     formatting_rules: any;
     status: string;
     strict_mode: boolean;
+    profile_icon?: string;
+    escalation_message: string;
+    escalation_button_text: string;
     created_at?: Date;
     updated_at?: Date;
+}
+
+export interface AiAssistantSettingsVersion {
+    id?: number;
+    settings_data: any;
+    version_label?: string;
+    created_at?: Date;
+    created_by?: string;
 }

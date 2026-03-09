@@ -469,8 +469,21 @@ export async function initializeTables() {
         formatting_rules JSONB DEFAULT '{"alwaysDisclaimer": true, "showChecklistTable": true, "countryLinks": true, "estimatedTime": true, "ctaButton": true}'::JSONB,
         status VARCHAR(50) DEFAULT 'online',
         strict_mode BOOLEAN DEFAULT TRUE,
+        profile_icon TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE ai_assistant_settings ADD COLUMN IF NOT EXISTS profile_icon TEXT;
+      ALTER TABLE ai_assistant_settings ADD COLUMN IF NOT EXISTS escalation_message TEXT DEFAULT 'I apologize, but I am not confident in my answer. Would you like to speak with a professional counsellor?';
+      ALTER TABLE ai_assistant_settings ADD COLUMN IF NOT EXISTS escalation_button_text VARCHAR(255) DEFAULT 'Connect with Counsellor';
+
+      CREATE TABLE IF NOT EXISTS ai_assistant_settings_versions (
+        id SERIAL PRIMARY KEY,
+        settings_data JSONB NOT NULL,
+        version_label VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by VARCHAR(255)
       );
 
       CREATE TABLE IF NOT EXISTS ai_features (

@@ -16,5 +16,7 @@ export class AiAssistantRoute implements Route { // Changed to named export
         this.router.use(authMiddleware);
         this.router.get(`/settings`, this.aiAssistantController.getSettings);
         this.router.post(`/settings`, this.aiAssistantController.updateSettings);
+        this.router.get(`/versions`, this.aiAssistantController.getVersions);
+        this.router.post(`/rollback/:id`, this.aiAssistantController.rollbackToVersion);
     }
 }

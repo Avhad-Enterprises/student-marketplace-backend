@@ -1,4 +1,4 @@
-import { AiAssistantSettings } from '@/interfaces/aiAssistant.interface';
+import { AiAssistantSettings, AiAssistantSettingsVersion } from '@/interfaces/aiAssistant.interface';
 import DB from '@/database';
 import { logger } from '@/utils/logger';
 
@@ -47,7 +47,10 @@ class AiAssistantService {
                     ctaButton: true
                 },
                 status: 'online',
-                strict_mode: true
+                strict_mode: true,
+                profile_icon: '',
+                escalation_message: 'I apologize, but I am not confident in my answer. Would you like to speak with a professional counsellor?',
+                escalation_button_text: 'Connect with Counsellor'
             };
         }
         return settings;
@@ -71,7 +74,37 @@ class AiAssistantService {
             await DB('ai_assistant_settings').insert(dataToSave);
         }
 
+        // Save version snapshot
+        try {
+            const versionData = {
+                settings_data: JSON.stringify(settingsData),
+                version_label: `v${new Date().getTime()}`,
+                created_at: new Date(),
+                created_by: 'Admin' // This could be dynamic if we have user context
+            };
+            await DB('ai_assistant_settings_versions').insert(versionData);
+        } catch (error) {
+            logger.error('Error saving settings version:', error);
+        }
+
         return this.getSettings();
+    }
+
+    public async getVersions(): Promise<AiAssistantSettingsVersion[]> {
+        return DB('ai_assistant_settings_versions').orderBy('created_at', 'desc').limit(50);
+    }
+
+    public async rollbackToVersion(versionId: number): Promise<AiAssistantSettings> {
+        const versionSnapshot = await DB('ai_assistant_settings_versions').where({ id: versionId }).first();
+        if (!versionSnapshot) {
+            throw new Error('Version not found');
+        }
+
+        const settingsData = typeof versionSnapshot.settings_data === 'string'
+            ? JSON.parse(versionSnapshot.settings_data)
+            : versionSnapshot.settings_data;
+
+        return this.updateSettings(settingsData);
     }
 }
 

@@ -43,4 +43,14 @@ export class AiFeatureController {
             next(error);
         }
     };
+
+    public deleteFeature = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const featureId = req.params.id;
+            await this.aiFeatureService.deleteFeature(featureId);
+            res.status(200).json({ message: 'deleteFeature' });
+        } catch (error) {
+            next(error);
+        }
+    };
 }
