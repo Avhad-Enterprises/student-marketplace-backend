@@ -602,6 +602,45 @@ export async function initializeTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS sops (
+        id SERIAL PRIMARY KEY,
+        student_name VARCHAR(255) NOT NULL,
+        country VARCHAR(255) NOT NULL,
+        university VARCHAR(255) NOT NULL,
+        review_status VARCHAR(50) DEFAULT 'Draft',
+        ai_confidence_score VARCHAR(50) DEFAULT '0%',
+        status VARCHAR(50) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS sop_assistant_settings (
+        id SERIAL PRIMARY KEY,
+        model_provider VARCHAR(50) DEFAULT 'openai',
+        model_version VARCHAR(50) DEFAULT 'gpt-4o',
+        system_prompt TEXT DEFAULT 'You are a professional Statement of Purpose (SOP) reviewer. Analyze the provided SOP for clarity, tone, structure, and impact. Provide a confidence score and detailed feedback.',
+        confidence_threshold INTEGER DEFAULT 70,
+        auto_approval BOOLEAN DEFAULT FALSE,
+        max_tokens INTEGER DEFAULT 2000,
+        temperature FLOAT DEFAULT 0.5,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for SOP Assistant Settings if empty
+      INSERT INTO sop_assistant_settings (model_provider, model_version, system_prompt, confidence_threshold, auto_approval, max_tokens, temperature)
+      SELECT 'openai', 'gpt-4o', 'You are a professional Statement of Purpose (SOP) reviewer. Analyze the provided SOP for clarity, tone, structure, and impact. Provide a confidence score and detailed feedback.', 70, false, 2000, 0.5
+      WHERE NOT EXISTS (SELECT 1 FROM sop_assistant_settings);
+
+      -- Initial Seed for SOPs if empty
+      INSERT INTO sops (student_name, country, university, review_status, ai_confidence_score, status)
+      SELECT 'John Doe', 'USA', 'Harvard University', 'Draft', '85%', 'active'
+      WHERE NOT EXISTS (SELECT 1 FROM sops WHERE student_name = 'John Doe');
+
+      INSERT INTO sops (student_name, country, university, review_status, ai_confidence_score, status)
+      SELECT 'Jane Smith', 'Canada', 'University of Toronto', 'Reviewed', '92%', 'active'
+      WHERE NOT EXISTS (SELECT 1 FROM sops WHERE student_name = 'Jane Smith');
     `);
 
     logger.info("Database tables initialized successfully");

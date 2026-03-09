@@ -39,6 +39,7 @@ import { EnquiryRoute } from './routes/enquiry.route';
 import { ExpertRoute } from './routes/experts.route';
 import { BlogRoute } from './routes/blogs.route';
 import SystemSettingsRoute from './routes/systemSettings.route';
+import SopAssistantRoute from './routes/sopAssistant.route';
 
 validateEnv();
 
@@ -75,6 +76,7 @@ const app = new App([
     new ExpertRoute(),
     new BlogRoute(),
     new SystemSettingsRoute(),
+    new SopAssistantRoute(),
 ]);
 
 const startServer = async () => {

@@ -1,0 +1,127 @@
+import DB from '@/database';
+import { SOP, SOPStats, SOPAssistantSettings } from '@/interfaces/sopAssistant.interface';
+
+class SopAssistantService {
+    public async getSOPs(filters: any) {
+        const { search, startDate, endDate, sortBy = 'created_at', sortOrder = 'desc', status, country, reviewStatus } = filters;
+        let query = DB('sops').select('*');
+
+        if (search && search.trim() !== '') {
+            const searchTerm = search.trim();
+            query = query.where(builder => {
+                builder.where('student_name', 'ilike', `%${searchTerm}%`)
+                    .orWhere('country', 'ilike', `%${searchTerm}%`)
+                    .orWhere('university', 'ilike', `%${searchTerm}%`)
+                    .orWhereRaw('CAST(id AS TEXT) ilike ?', [`%${searchTerm}%`]);
+            });
+        }
+
+        if (status) query = query.where('status', status);
+        if (country) query = query.where('country', country);
+        if (reviewStatus) query = query.where('review_status', reviewStatus);
+
+        if (startDate) {
+            query = query.where('created_at', '>=', startDate);
+        }
+
+        if (endDate) {
+            query = query.where('created_at', '<=', endDate);
+        }
+
+        // Validate sortBy field
+        const validFields = ['id', 'student_name', 'country', 'university', 'review_status', 'ai_confidence_score', 'status', 'created_at', 'updated_at'];
+        const sortField = validFields.includes(sortBy) ? sortBy : 'created_at';
+        const order = sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+        const sops = await query.orderBy(sortField, order);
+        return sops.map(sop => ({
+            id: sop.id.toString(),
+            studentName: sop.student_name,
+            country: sop.country,
+            university: sop.university,
+            reviewStatus: sop.review_status,
+            aiConfidenceScore: sop.ai_confidence_score,
+            status: sop.status,
+            lastUpdated: sop.updated_at
+        }));
+    }
+
+    public async getStats(): Promise<SOPStats> {
+        const totalSOPsCount = await DB('sops').count('id as count').first();
+        const draftsCount = await DB('sops').where('review_status', 'Draft').count('id as count').first();
+        const reviewedCount = await DB('sops').where('review_status', 'Reviewed').count('id as count').first();
+
+        const sops = await DB('sops').select('ai_confidence_score');
+        let avg = 0;
+        if (sops.length > 0) {
+            const scores = sops.map(s => parseInt(s.ai_confidence_score) || 0);
+            avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        }
+
+        return {
+            totalSOPs: Number(totalSOPsCount?.count || 0),
+            draftsCreated: Number(draftsCount?.count || 0),
+            reviewedSOPs: Number(reviewedCount?.count || 0),
+            avgConfidence: `${Math.round(avg)}%`
+        };
+    }
+
+    public async createSOP(data: Partial<SOP>) {
+        const [id] = await DB('sops').insert({
+            student_name: data.student_name,
+            country: data.country,
+            university: data.university,
+            review_status: data.review_status || 'Draft',
+            ai_confidence_score: data.ai_confidence_score || '0%',
+            status: data.status || 'active',
+            created_at: new Date(),
+            updated_at: new Date()
+        }).returning('id');
+        return id;
+    }
+
+    public async updateSOP(id: string, data: Partial<SOP>) {
+        const updateData: any = {
+            updated_at: new Date()
+        };
+
+        if (data.student_name) updateData.student_name = data.student_name;
+        if (data.country) updateData.country = data.country;
+        if (data.university) updateData.university = data.university;
+        if (data.review_status) updateData.review_status = data.review_status;
+        if (data.ai_confidence_score) updateData.ai_confidence_score = data.ai_confidence_score;
+        if (data.status) updateData.status = data.status;
+
+        await DB('sops').where({ id }).update(updateData);
+        return true;
+    }
+
+    public async updateStatus(id: string, status: string) {
+        await DB('sops').where({ id }).update({ status, updated_at: new Date() });
+        return true;
+    }
+
+    public async getSettings(): Promise<SOPAssistantSettings> {
+        const settings = await DB('sop_assistant_settings').first();
+        return settings;
+    }
+
+    public async updateSettings(data: Partial<SOPAssistantSettings>) {
+        const settings = await DB('sop_assistant_settings').first();
+        if (settings) {
+            await DB('sop_assistant_settings').where({ id: settings.id }).update({
+                ...data,
+                updated_at: new Date()
+            });
+        } else {
+            await DB('sop_assistant_settings').insert({
+                ...data,
+                created_at: new Date(),
+                updated_at: new Date()
+            });
+        }
+        return true;
+    }
+}
+
+export default SopAssistantService;
