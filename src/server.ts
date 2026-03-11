@@ -40,6 +40,10 @@ import { ExpertRoute } from './routes/experts.route';
 import { BlogRoute } from './routes/blogs.route';
 import SystemSettingsRoute from './routes/systemSettings.route';
 import SopAssistantRoute from './routes/sopAssistant.route';
+import { LibraryItemRoute } from './routes/libraryItem.route';
+import { AiTestPlansRoute } from './routes/aiTestPlans.route';
+import { AiTestReportRoute } from './routes/aiTestReport.route';
+
 
 validateEnv();
 
@@ -77,6 +81,9 @@ const app = new App([
     new BlogRoute(),
     new SystemSettingsRoute(),
     new SopAssistantRoute(),
+    new LibraryItemRoute(),
+    new AiTestPlansRoute(),
+    new AiTestReportRoute(),
 ]);
 
 const startServer = async () => {

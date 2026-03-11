@@ -30,6 +30,11 @@ export class AiFeatureService {
     }
 
     public async createFeature(featureData: AiFeature): Promise<AiFeature> {
+        // Generate a unique feature_id if not provided or if it's 'new'
+        if (!featureData.feature_id || featureData.feature_id === 'new') {
+            featureData.feature_id = `feat-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        }
+
         const [id] = await DB('ai_features').insert(featureData).returning('id');
         return this.getFeatureById(featureData.feature_id);
     }

@@ -31,6 +31,9 @@ export const Tables = {
   BLOGS: "blogs",
   SYSTEM_SETTINGS: "system_settings",
   NOTIFICATION_SETTINGS: "notification_settings",
+  AI_TEST_LIBRARY: "ai_test_library",
+  AI_TEST_PLANS_SETTINGS: "ai_test_plans_settings",
+  AI_TEST_REPORTS: "ai_test_reports",
 };
 
 /**
@@ -530,6 +533,36 @@ export async function initializeTables() {
       SELECT 'feat-006', 6, 'Timeline Planner', 'disabled', 'timeline-generation-flow', 'I''ll create a personalized timeline for your application journey.', 'I''ll create a personalized timeline for your application journey.', 145, 'academic'
       WHERE NOT EXISTS (SELECT 1 FROM ai_features WHERE feature_id = 'feat-006');
 
+      CREATE TABLE IF NOT EXISTS ai_test_library (
+        id SERIAL PRIMARY KEY,
+        item_id VARCHAR(50) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        exam VARCHAR(100) NOT NULL,
+        difficulty VARCHAR(50),
+        topic VARCHAR(100),
+        type VARCHAR(100),
+        transcript BOOLEAN DEFAULT FALSE,
+        sections_included JSONB,
+        duration VARCHAR(50),
+        status VARCHAR(50) DEFAULT 'Draft',
+        usage_30d INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for AI Test Library if empty
+      INSERT INTO ai_test_library (item_id, title, exam, difficulty, topic, status, usage_30d)
+      SELECT 'R001', 'Academic Reading - Climate Change Impact', 'IELTS Academic', 'Hard', 'Environment', 'Published', 234
+      WHERE NOT EXISTS (SELECT 1 FROM ai_test_library WHERE item_id = 'R001');
+
+      INSERT INTO ai_test_library (item_id, title, exam, difficulty, topic, status, usage_30d)
+      SELECT 'R002', 'General Training - Workplace Communication', 'IELTS General', 'Medium', 'Work', 'Published', 189
+      WHERE NOT EXISTS (SELECT 1 FROM ai_test_library WHERE item_id = 'R002');
+
+      INSERT INTO ai_test_library (item_id, title, exam, topic, transcript, status, usage_30d)
+      SELECT 'L001', 'Academic Lecture - Renewable Energy', 'IELTS Academic', 'Science', true, 'Published', 287
+      WHERE NOT EXISTS (SELECT 1 FROM ai_test_library WHERE item_id = 'L001');
+
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
         booking_id VARCHAR(50) UNIQUE NOT NULL,
@@ -654,6 +687,56 @@ export async function initializeTables() {
       INSERT INTO sops (student_name, country, university, review_status, ai_confidence_score, status)
       SELECT 'Jane Smith', 'Canada', 'University of Toronto', 'Reviewed', '92%', 'active'
       WHERE NOT EXISTS (SELECT 1 FROM sops WHERE student_name = 'Jane Smith');
+      CREATE TABLE IF NOT EXISTS ai_test_plans_settings (
+        id SERIAL PRIMARY KEY,
+        weak_skill_boost INTEGER DEFAULT 30,
+        ensure_min_skills BOOLEAN DEFAULT TRUE,
+        prevent_overload BOOLEAN DEFAULT TRUE,
+        intensity_mode VARCHAR(50) DEFAULT 'normal',
+        custom_intensity JSONB DEFAULT '{"light": {"timeMin": 30, "timeMax": 45, "tasksMin": 1, "tasksMax": 2}, "normal": {"timeMin": 60, "timeMax": 90, "tasksMin": 2, "tasksMax": 3}, "intense": {"timeMin": 120, "timeMax": 180, "tasksMin": 3, "tasksMax": 5}}'::JSONB,
+        mock_frequency VARCHAR(50) DEFAULT 'balanced',
+        exam_countdown_boost BOOLEAN DEFAULT TRUE,
+        boost_days_before INTEGER DEFAULT 14,
+        auto_exam_ready BOOLEAN DEFAULT TRUE,
+        ready_band_threshold FLOAT DEFAULT 6.5,
+        ready_consistency INTEGER DEFAULT 75,
+        readiness_weights JSONB DEFAULT '{"mockPerformance": 40, "consistency": 30, "skillBalance": 20, "completionRate": 10}'::JSONB,
+        enable_streak BOOLEAN DEFAULT TRUE,
+        min_daily_activity INTEGER DEFAULT 30,
+        grace_days INTEGER DEFAULT 1,
+        streak_milestone INTEGER DEFAULT 7,
+        show_nudges BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      INSERT INTO ai_test_plans_settings (id)
+      SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM ai_test_plans_settings WHERE id = 1);
+
+      CREATE TABLE IF NOT EXISTS ai_test_reports (
+        id SERIAL PRIMARY KEY,
+        report_id VARCHAR(50) UNIQUE NOT NULL,
+        type VARCHAR(100) NOT NULL,
+        severity VARCHAR(50) NOT NULL,
+        student_name VARCHAR(255) NOT NULL,
+        student_id VARCHAR(50) NOT NULL,
+        skill VARCHAR(100) NOT NULL,
+        exam_type VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+        status VARCHAR(50) DEFAULT 'open',
+        assigned_to VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Initial Seed for AI Test Reports if empty
+      INSERT INTO ai_test_reports (report_id, type, severity, student_name, student_id, skill, exam_type, description, status)
+      SELECT 'ISS-001', 'transcription', 'critical', 'John Smith', 'STU-1234', 'Speaking', 'IELTS Academic', 'Audio transcription failed with error code 503', 'open'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_test_reports WHERE report_id = 'ISS-001');
+
+      INSERT INTO ai_test_reports (report_id, type, severity, student_name, student_id, skill, exam_type, description, status, assigned_to)
+      SELECT 'ISS-002', 'transcription', 'critical', 'Emma Wilson', 'STU-2345', 'Speaking', 'IELTS Academic', 'Unable to process audio file - format not supported', 'investigating', 'Tech Team'
+      WHERE NOT EXISTS (SELECT 1 FROM ai_test_reports WHERE report_id = 'ISS-002');
     `);
 
     logger.info("Database tables initialized successfully");
