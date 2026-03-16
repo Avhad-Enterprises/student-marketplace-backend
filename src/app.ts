@@ -23,12 +23,11 @@ class App {
 
         this.initializeMiddlewares();
         this.initializeRoutes(routes);
-        this.initializeHealthCheck();
         this.initializeErrorHandling();
     }
 
     public listen() {
-        const server = this.app.listen(this.port, () => {
+        const server = this.app.listen(Number(this.port), "0.0.0.0", () => {
             logger.info(`=================================`);
             logger.info(`======= ENV: ${this.env} =======`);
             logger.info(`🚀 App listening on the port ${this.port}`);
@@ -111,17 +110,7 @@ class App {
         this.app.use(cookieParser());
     }
 
-    private initializeHealthCheck() {
-        this.app.get('/health', (req, res) => {
-            res.status(200).json({
-                status: 'ok',
-                timestamp: new Date().toISOString(),
-                uptime: process.uptime(),
-                environment: this.env,
-                version: process.env.npm_package_version || '1.0.0'
-            });
-        });
-    }
+
 
     private initializeRoutes(routes: Routes[]) {
         routes.forEach((route) => {

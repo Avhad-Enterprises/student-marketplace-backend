@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
-import path from 'path';
-dotenv.config({ path: path.join(__dirname, '../.env') });
+
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
 // console.log("!!! SERVER.TS STARTED !!!"); // Removing debug log
 import App from './app';
 import validateEnv from './utils/validateEnv';
@@ -43,11 +45,14 @@ import SopAssistantRoute from './routes/sopAssistant.route';
 import { LibraryItemRoute } from './routes/libraryItem.route';
 import { AiTestPlansRoute } from './routes/aiTestPlans.route';
 import { AiTestReportRoute } from './routes/aiTestReport.route';
+import { AiTestScoringRoute } from './routes/aiTestScoring.route';
+import { HealthRoute } from './routes/health.route';
 
 
 validateEnv();
 
 const app = new App([
+    new HealthRoute(),
     new AuthRoute(),
     new StudentRoute(),
     new UniversityRoute(),
@@ -84,6 +89,7 @@ const app = new App([
     new LibraryItemRoute(),
     new AiTestPlansRoute(),
     new AiTestReportRoute(),
+    new AiTestScoringRoute(),
 ]);
 
 const startServer = async () => {

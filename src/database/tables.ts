@@ -34,6 +34,7 @@ export const Tables = {
   AI_TEST_LIBRARY: "ai_test_library",
   AI_TEST_PLANS_SETTINGS: "ai_test_plans_settings",
   AI_TEST_REPORTS: "ai_test_reports",
+  AI_TEST_SCORING_SETTINGS: "ai_test_scoring_settings",
 };
 
 /**
@@ -737,6 +738,46 @@ export async function initializeTables() {
       INSERT INTO ai_test_reports (report_id, type, severity, student_name, student_id, skill, exam_type, description, status, assigned_to)
       SELECT 'ISS-002', 'transcription', 'critical', 'Emma Wilson', 'STU-2345', 'Speaking', 'IELTS Academic', 'Unable to process audio file - format not supported', 'investigating', 'Tech Team'
       WHERE NOT EXISTS (SELECT 1 FROM ai_test_reports WHERE report_id = 'ISS-002');
+
+      CREATE TABLE IF NOT EXISTS ai_test_scoring_settings (
+        id SERIAL PRIMARY KEY,
+        reading_mapping JSONB NOT NULL,
+        listening_mapping JSONB NOT NULL,
+        reading_total_questions INTEGER DEFAULT 40,
+        listening_total_questions INTEGER DEFAULT 40,
+        reading_negative_marking BOOLEAN DEFAULT FALSE,
+        listening_negative_marking BOOLEAN DEFAULT FALSE,
+        writing_weights JSONB NOT NULL,
+        writing_strictness VARCHAR(50) DEFAULT 'standard',
+        apply_word_count_penalty BOOLEAN DEFAULT TRUE,
+        min_word_count INTEGER DEFAULT 150,
+        word_count_penalty VARCHAR(10) DEFAULT '-0.5',
+        enable_off_topic_detection BOOLEAN DEFAULT TRUE,
+        off_topic_sensitivity VARCHAR(20) DEFAULT 'medium',
+        speaking_weights JSONB NOT NULL,
+        min_speaking_duration INTEGER DEFAULT 120,
+        ideal_range_min INTEGER DEFAULT 120,
+        ideal_range_max INTEGER DEFAULT 180,
+        apply_duration_penalty BOOLEAN DEFAULT TRUE,
+        filler_sensitivity VARCHAR(20) DEFAULT 'medium',
+        writing_model VARCHAR(100) DEFAULT 'gpt-4-turbo',
+        speech_model VARCHAR(100) DEFAULT 'whisper-1',
+        retry_attempts INTEGER DEFAULT 3,
+        timeout_duration INTEGER DEFAULT 30,
+        confidence_threshold INTEGER DEFAULT 85,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      INSERT INTO ai_test_scoring_settings (
+        id, reading_mapping, listening_mapping, writing_weights, speaking_weights
+      )
+      SELECT 1, 
+        '[{"range": "39-40", "band": "9.0"}, {"range": "37-38", "band": "8.5"}, {"range": "35-36", "band": "8.0"}, {"range": "33-34", "band": "7.5"}, {"range": "30-32", "band": "7.0"}, {"range": "27-29", "band": "6.5"}, {"range": "23-26", "band": "6.0"}, {"range": "19-22", "band": "5.5"}, {"range": "16-18", "band": "5.0"}]'::JSONB,
+        '[{"range": "39-40", "band": "9.0"}, {"range": "37-38", "band": "8.5"}, {"range": "35-36", "band": "8.0"}, {"range": "32-34", "band": "7.5"}, {"range": "30-31", "band": "7.0"}, {"range": "26-29", "band": "6.5"}, {"range": "23-25", "band": "6.0"}, {"range": "18-22", "band": "5.5"}, {"range": "16-17", "band": "5.0"}]'::JSONB,
+        '{"taskResponse": 25, "coherence": 25, "lexical": 25, "grammar": 25}'::JSONB,
+        '{"fluency": 25, "vocabulary": 25, "grammar": 25, "pronunciation": 25}'::JSONB
+      WHERE NOT EXISTS (SELECT 1 FROM ai_test_scoring_settings WHERE id = 1);
     `);
 
     logger.info("Database tables initialized successfully");
