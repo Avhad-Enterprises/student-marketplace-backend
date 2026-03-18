@@ -62,6 +62,25 @@ class AuthService {
     public createCookie(tokenData: TokenData): string {
         return `Authorization=${tokenData.token}; HttpOnly; Max-Age=${tokenData.expiresIn};`;
     }
+
+    public async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+        if (!userId || !currentPassword || !newPassword) {
+            throw new HttpException(400, "All fields are required");
+        }
+
+        const user = await DB('users').where({ id: userId }).first();
+        if (!user) {
+            throw new HttpException(404, "User not found");
+        }
+
+        const isPasswordMatching = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isPasswordMatching) {
+            throw new HttpException(400, "Current password incorrect");
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await DB('users').where({ id: userId }).update({ password_hash: hashedPassword, updated_at: new Date() });
+    }
 }
 
 export default AuthService;
