@@ -93,6 +93,7 @@ class App {
                 }
             },
             credentials: true,
+            maxAge: 86400, // Cache preflight requests for 24 hours
         }));
 
         this.app.use(hpp());
