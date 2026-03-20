@@ -1,0 +1,136 @@
+name: Production CI-CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ----------------------------------------
+  # 1️⃣ Determine Next Version
+  # ----------------------------------------
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      next_tag: ${{ steps.bump.outputs.next_tag }}
+
+    steps:
+      - name: Checkout k8s-prod branch
+        uses: actions/checkout@v4
+        with:
+          repository: Avhad-Enterprises/student-marketplace-backend
+          ref: k8s-prod
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Calculate next version
+        id: bump
+        run: |
+          CURRENT_TAG=$(grep newTag kustomization.yaml | awk '{print $2}')
+
+          if [ -z "$CURRENT_TAG" ]; then
+            NEXT_TAG="v1"
+          else
+            VERSION_NUMBER=${CURRENT_TAG#v}
+            NEXT_VERSION=$((VERSION_NUMBER + 1))
+            NEXT_TAG="v${NEXT_VERSION}"
+          fi
+
+          echo "next_tag=${NEXT_TAG}" >> $GITHUB_OUTPUT
+
+  # ----------------------------------------
+  # 2️⃣ Build & Push Docker Image
+  # ----------------------------------------
+  build:
+    needs: version
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Convert repo name to lowercase
+        id: repo
+        run: |
+          LOWER_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${LOWER_REPO}" >> $GITHUB_OUTPUT
+
+      - name: Login to GHCR (using PAT)
+        run: |
+          echo "${{ secrets.GH_PAT }}" | \
+          docker login ghcr.io -u pdevhare1 --password-stdin
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ steps.repo.outputs.image }}:${{ needs.version.outputs.next_tag }} \
+            -t ${{ steps.repo.outputs.image }}:latest .
+
+      - name: Push Docker Image
+        run: |
+          docker push ${{ steps.repo.outputs.image }}:${{ needs.version.outputs.next_tag }}
+          docker push ${{ steps.repo.outputs.image }}:latest
+
+  # ----------------------------------------
+  # 3️⃣ Update k8s-prod Branch (GitOps)
+  # ----------------------------------------
+  update-k8s:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout k8s-prod branch
+        uses: actions/checkout@v4
+        with:
+          repository: Avhad-Enterprises/student-marketplace-backend
+          ref: k8s-prod
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Convert repo name to lowercase
+        id: repo
+        run: |
+          LOWER_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${LOWER_REPO}" >> $GITHUB_OUTPUT
+
+      - name: Install Kustomize
+        run: |
+          curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Update image tag
+        run: |
+          kustomize edit set image \
+          ${{ steps.repo.outputs.image }}=${{ steps.repo.outputs.image }}:${{ needs.version.outputs.next_tag }}
+
+          git config user.name "ci-bot"
+          git config user.email "ci@github.com"
+
+          git commit -am "ci: release ${{ needs.version.outputs.next_tag }}" || echo "No changes"
+
+          git push https://${{ secrets.GH_PAT }}@github.com/Avhad-Enterprises/student-marketplace-backend.git k8s-prod
+
+  # ----------------------------------------
+  # 4️⃣ Create Git Tag
+  # ----------------------------------------
+  release-tag:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Create and Push Tag
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@github.com"
+
+          git tag -a ${{ needs.version.outputs.next_tag }} \
+            -m "Release ${{ needs.version.outputs.next_tag }}"
+
+          git push https://${{ secrets.GH_PAT }}@github.com/Avhad-Enterprises/student-marketplace-backend.git \
+            ${{ needs.version.outputs.next_tag }}
