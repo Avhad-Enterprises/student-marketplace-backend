@@ -17,6 +17,7 @@ class SopAssistantRoute implements Route {
         this.router.get(`/sops`, this.sopAssistantController.getSOPs);
         this.router.get(`/stats`, this.sopAssistantController.getStats);
         this.router.post(`/sops`, this.sopAssistantController.createSOP);
+        this.router.post(`/sops/import`, this.sopAssistantController.importSOPs);
         this.router.put(`/sops/:id`, this.sopAssistantController.updateSOP);
         this.router.patch(`/sops/:id/status`, this.sopAssistantController.updateStatus);
 

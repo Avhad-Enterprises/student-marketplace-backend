@@ -101,6 +101,35 @@ class SopAssistantService {
         return true;
     }
 
+    public async importSOPs(sops: any[]) {
+        for (const sop of sops) {
+            const row: any = {
+                student_name: sop.studentName || sop.student_name,
+                country: sop.country,
+                university: sop.university,
+                review_status: sop.reviewStatus || sop.review_status || 'Draft',
+                ai_confidence_score: sop.aiConfidenceScore || sop.ai_confidence_score || '0%',
+                status: sop.status || 'active',
+                updated_at: new Date()
+            };
+
+            const id = sop.sopId || sop.id;
+            if (id) {
+                // Update if exists, otherwise insert (upsert logic if needed, but simple update is fine if assuming ID exists)
+                const updated = await DB('sops').where({ id }).update(row);
+                if (!updated) {
+                    row.id = id;
+                    row.created_at = new Date();
+                    await DB('sops').insert(row);
+                }
+            } else {
+                row.created_at = new Date();
+                await DB('sops').insert(row);
+            }
+        }
+        return sops.length;
+    }
+
     public async getSettings(): Promise<SOPAssistantSettings> {
         const settings = await DB('sop_assistant_settings').first();
         return settings;

@@ -64,6 +64,16 @@ class SopAssistantController {
         }
     };
 
+    public importSOPs = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const sops = req.body;
+            const count = await this.sopAssistantService.importSOPs(sops);
+            res.status(200).json({ message: `${count} SOPs imported successfully`, count });
+        } catch (error) {
+            next(error);
+        }
+    };
+
     public getSettings = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const data = await this.sopAssistantService.getSettings();
