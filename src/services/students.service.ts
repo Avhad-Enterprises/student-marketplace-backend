@@ -135,6 +135,12 @@ export class StudentService {
       budget_range: studentData.budgetRange,
       intake_preference: studentData.intakePreference,
       test_scores: studentData.testScores,
+      
+      student_intent: studentData.studentIntent,
+      interested_services: JSON.stringify(studentData.interestedServices || []),
+      communication_preference: studentData.communicationPreference,
+      timezone: studentData.timezone,
+
 
       // Planning & Application fields
       planning_countries: studentData.planningCountries,
@@ -359,6 +365,12 @@ export class StudentService {
       budget_range: studentData.budgetRange,
       intake_preference: studentData.intakePreference,
       test_scores: studentData.testScores,
+      
+      student_intent: studentData.studentIntent,
+      interested_services: JSON.stringify(studentData.interestedServices || []),
+      communication_preference: studentData.communicationPreference,
+      timezone: studentData.timezone,
+
 
       // Planning & Application fields
       planning_countries: studentData.planningCountries,

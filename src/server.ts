@@ -40,6 +40,8 @@ import { BookingRoute } from "./routes/booking.route";
 import { EnquiryRoute } from "./routes/enquiry.route";
 import { ExpertRoute } from "./routes/experts.route";
 import { BlogRoute } from "./routes/blogs.route";
+import RoleRoute from "./routes/role.route";
+import UserRoute from "./routes/users.route";
 import SystemSettingsRoute from "./routes/systemSettings.route";
 import SopAssistantRoute from "./routes/sopAssistant.route";
 import { LibraryItemRoute } from "./routes/libraryItem.route";
@@ -52,6 +54,8 @@ validateEnv();
 
 const app = new App([
   new HealthRoute(),
+  new UserRoute(),
+  new RoleRoute(),
   new AuthRoute(),
   new StudentRoute(),
   new UniversityRoute(),
