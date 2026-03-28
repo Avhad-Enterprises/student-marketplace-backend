@@ -12,4 +12,4 @@ resources:
 images:
 - name: ghcr.io/avhad-enterprises/student-marketplace-backend
   newName: ghcr.io/avhad-enterprises/student-marketplace-backend
-  newTag: v6
+  newTag: v7
