@@ -43,11 +43,24 @@ import { BlogRoute } from "./routes/blogs.route";
 import RoleRoute from "./routes/role.route";
 import UserRoute from "./routes/users.route";
 import SystemSettingsRoute from "./routes/systemSettings.route";
+import ServiceCountrySettingsRoute from "./routes/serviceCountrySettings.route";
+import ComparisonRulesRoute from "./routes/comparisonRules.route";
 import SopAssistantRoute from "./routes/sopAssistant.route";
 import { LibraryItemRoute } from "./routes/libraryItem.route";
 import { AiTestPlansRoute } from "./routes/aiTestPlans.route";
 import { AiTestReportRoute } from "./routes/aiTestReport.route";
 import { AiTestScoringRoute } from "./routes/aiTestScoring.route";
+import { AiVisaSettingsRoute } from "./routes/aiVisaSettings.route";
+import { CommunicationSettingsRoute } from "./routes/communicationSettings.route";
+import { MessageTemplateRoute } from "./routes/messageTemplate.route";
+import { DeliverySafetySettingsRoute } from "./routes/deliverySafetySettings.route";
+import AdminNotificationSettingsRoute from "./routes/adminNotificationSettings.route";
+import ComplianceSettingsRoute from "./routes/complianceSettings.route";
+import FinanceSettingsRoute from "./routes/financeSettings.route";
+import LocalizationSettingsRoute from "./routes/localizationSettings.route";
+import IntegrationSettingsRoute from "./routes/integrationSettings.route";
+import FileSettingsRoute from "./routes/fileSettings.route";
+import PolicySettingsRoute from "./routes/policySettings.route";
 import { HealthRoute } from "./routes/health.route";
 
 validateEnv();
@@ -88,11 +101,24 @@ const app = new App([
   new ExpertRoute(),
   new BlogRoute(),
   new SystemSettingsRoute(),
+  new ServiceCountrySettingsRoute(),
+  new ComparisonRulesRoute(),
   new SopAssistantRoute(),
   new LibraryItemRoute(),
   new AiTestPlansRoute(),
   new AiTestReportRoute(),
   new AiTestScoringRoute(),
+  new AiVisaSettingsRoute(),
+  new CommunicationSettingsRoute(),
+  new MessageTemplateRoute(),
+  new DeliverySafetySettingsRoute(),
+  new AdminNotificationSettingsRoute(),
+  new ComplianceSettingsRoute(),
+  new FinanceSettingsRoute(),
+  new LocalizationSettingsRoute(),
+  new IntegrationSettingsRoute(),
+  new FileSettingsRoute(),
+  new PolicySettingsRoute(),
 ]);
 
 // const startServer = async () => {

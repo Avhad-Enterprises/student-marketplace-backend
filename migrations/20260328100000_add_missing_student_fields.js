@@ -2,24 +2,38 @@
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.up = function(knex) {
-  return knex.schema.table('students', function(table) {
-    table.string('student_intent');
-    table.jsonb('interested_services');
-    table.string('communication_preference');
-    table.string('timezone');
-  });
+exports.up = async function(knex) {
+  const table = 'students';
+  const columns = [
+    { name: 'student_intent', type: 'string' },
+    { name: 'interested_services', type: 'jsonb' },
+    { name: 'communication_preference', type: 'string' },
+    { name: 'timezone', type: 'string' }
+  ];
+
+  for (const col of columns) {
+    const hasCol = await knex.schema.hasColumn(table, col.name);
+    if (!hasCol) {
+        await knex.schema.table(table, t => {
+          if (col.type === 'string') t.string(col.name);
+          else if (col.type === 'jsonb') t.jsonb(col.name);
+        });
+    }
+  }
 };
 
 /**
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.down = function(knex) {
-  return knex.schema.table('students', function(table) {
-    table.dropColumn('student_intent');
-    table.dropColumn('interested_services');
-    table.dropColumn('communication_preference');
-    table.dropColumn('timezone');
-  });
+exports.down = async function(knex) {
+  const table = 'students';
+  const columns = ['student_intent', 'interested_services', 'communication_preference', 'timezone'];
+
+  for (const col of columns) {
+    const hasCol = await knex.schema.hasColumn(table, col);
+    if (hasCol) {
+        await knex.schema.table(table, t => t.dropColumn(col));
+    }
+  }
 };

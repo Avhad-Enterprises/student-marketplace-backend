@@ -2,7 +2,10 @@
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.up = function (knex) {
+exports.up = async function (knex) {
+    const exists = await knex.schema.hasTable('sops');
+    if (exists) return;
+
     return knex.schema.createTable('sops', table => {
         table.increments('id').primary();
         table.string('student_name').notNullable();
@@ -21,5 +24,5 @@ exports.up = function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-    return knex.schema.dropTable('sops');
+    return knex.schema.dropTableIfExists('sops');
 };

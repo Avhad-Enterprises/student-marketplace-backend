@@ -2,7 +2,10 @@
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.up = function (knex) {
+exports.up = async function (knex) {
+    const exists = await knex.schema.hasTable('ai_assistant_settings');
+    if (exists) return;
+
     return knex.schema.createTable('ai_assistant_settings', table => {
         table.increments('id').primary();
         table.string('assistant_name').notNullable().defaultTo('Study Abroad Visa Assistant');
@@ -55,5 +58,5 @@ exports.up = function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-    return knex.schema.dropTable('ai_assistant_settings');
+    return knex.schema.dropTableIfExists('ai_assistant_settings');
 };

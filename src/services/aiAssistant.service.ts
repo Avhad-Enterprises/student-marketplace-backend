@@ -50,7 +50,21 @@ class AiAssistantService {
                 strict_mode: true,
                 profile_icon: '',
                 escalation_message: 'I apologize, but I am not confident in my answer. Would you like to speak with a professional counsellor?',
-                escalation_button_text: 'Connect with Counsellor'
+                escalation_button_text: 'Connect with Counsellor',
+                enable_ai_visa_assistant: true,
+                ai_mode: 'Balanced',
+                risk_sensitivity_level: 'Medium',
+                escalation_trigger_threshold: 60,
+                default_prompt_template: 'Analyze the student profile and provide a comprehensive visa assessment. Consider academic background, financial situation, English proficiency, work experience, and destination country requirements. Provide recommendations for countries with the highest visa success probability.',
+                allow_dynamic_country_prompt_injection: true,
+                allow_document_context_injection: true,
+                allow_financial_data_injection: false,
+                enable_response_explanation_mode: true,
+                block_unverified_student_data: true,
+                require_manual_review_for_high_risk_cases: true,
+                log_all_ai_decisions: true,
+                enable_ai_audit_trail: true,
+                enable_human_approval_required: false
             };
         }
         return settings;
