@@ -34,6 +34,8 @@ export class BlogsService {
             status: blogData.status || 'draft',
             visibility: blogData.visibility || 'public',
             publish_date: blogData.publish_date || null,
+            meta_title: blogData.meta_title || null,
+            meta_description: blogData.meta_description || null,
         };
 
         const res = await DB(Tables.BLOGS).insert(insertObj).returning("*");
@@ -55,6 +57,8 @@ export class BlogsService {
         if (blogData.status !== undefined) updateObj.status = blogData.status;
         if (blogData.visibility !== undefined) updateObj.visibility = blogData.visibility;
         if (blogData.publish_date !== undefined) updateObj.publish_date = blogData.publish_date;
+        if (blogData.meta_title !== undefined) updateObj.meta_title = blogData.meta_title;
+        if (blogData.meta_description !== undefined) updateObj.meta_description = blogData.meta_description;
 
         const res = await DB(Tables.BLOGS).where("id", id).update(updateObj).returning("*");
         return res && res[0] ? res[0] : null;

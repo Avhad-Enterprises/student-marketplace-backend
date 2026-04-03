@@ -41,6 +41,7 @@ export const Tables = {
   COMMUNICATION_SETTINGS: "communication_settings",
   MESSAGE_TEMPLATES: "message_templates",
   DELIVERY_SAFETY_SETTINGS: "delivery_safety_settings",
+  GENERAL_SETTINGS: "general_settings",
 };
 
 /**
@@ -69,6 +70,8 @@ export async function initializeTables() {
     await initAIServices();
     // 9. Security & Privacy
     await initSecuritySafety();
+    // 10. General Settings
+    await initGeneralSettings();
 
     logger.info("Database initialization completed successfully");
   } catch (err) {
@@ -320,10 +323,31 @@ async function initFinanceAndPayments() {
       id SERIAL PRIMARY KEY,
       student_db_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
       payment_id VARCHAR(50) UNIQUE,
+      invoice_number VARCHAR(100) UNIQUE,
+      description TEXT,
       amount DECIMAL(10, 2) NOT NULL,
+      currency VARCHAR(10) DEFAULT 'USD',
+      service_type VARCHAR(100),
       status VARCHAR(50) DEFAULT 'pending',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      payment_method VARCHAR(100),
+      due_date DATE,
+      paid_date DATE,
+      notes TEXT,
+      created_by VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100) UNIQUE;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS description TEXT;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'USD';
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS service_type VARCHAR(100);
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_method VARCHAR(100);
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS due_date DATE;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS paid_date DATE;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS notes TEXT;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
   `);
 }
 
@@ -341,9 +365,28 @@ async function initSupportContent() {
       id SERIAL PRIMARY KEY,
       blog_id VARCHAR(50) UNIQUE NOT NULL,
       title VARCHAR(255) NOT NULL,
+      author VARCHAR(255),
+      category VARCHAR(100),
+      content TEXT,
+      tags TEXT,
       status VARCHAR(50) DEFAULT 'draft',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      visibility VARCHAR(50) DEFAULT 'public',
+      publish_date TIMESTAMP,
+      meta_title VARCHAR(255),
+      meta_description TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS author VARCHAR(255);
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS category VARCHAR(100);
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS content TEXT;
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS tags TEXT;
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'public';
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS publish_date TIMESTAMP;
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS meta_title VARCHAR(255);
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS meta_description TEXT;
+    ALTER TABLE blogs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
   `);
 }
 
@@ -400,5 +443,25 @@ async function initSecuritySafety() {
 
     INSERT INTO delivery_safety_settings (id)
     SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM delivery_safety_settings WHERE id = 1);
+  `);
+}
+
+async function initGeneralSettings() {
+  await DB.raw(`
+    CREATE TABLE IF NOT EXISTS general_settings (
+      id SERIAL PRIMARY KEY,
+      key VARCHAR(100) UNIQUE NOT NULL,
+      value TEXT,
+      group_name VARCHAR(50) DEFAULT 'general',
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Seed mandatory legal keys
+    INSERT INTO general_settings (key, value, group_name)
+    VALUES 
+      ('privacy_policy', '', 'legal'),
+      ('terms_of_use', '', 'legal'),
+      ('gdpr_enabled', 'false', 'compliance')
+    ON CONFLICT (key) DO NOTHING;
   `);
 }

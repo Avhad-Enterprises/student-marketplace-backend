@@ -61,7 +61,9 @@ import LocalizationSettingsRoute from "./routes/localizationSettings.route";
 import IntegrationSettingsRoute from "./routes/integrationSettings.route";
 import FileSettingsRoute from "./routes/fileSettings.route";
 import PolicySettingsRoute from "./routes/policySettings.route";
+import GeneralSettingsRoute from "./routes/generalSettings.route";
 import { HealthRoute } from "./routes/health.route";
+import DashboardRoute from "./routes/dashboard.route";
 
 validateEnv();
 
@@ -119,6 +121,8 @@ const app = new App([
   new IntegrationSettingsRoute(),
   new FileSettingsRoute(),
   new PolicySettingsRoute(),
+  new GeneralSettingsRoute(),
+  new DashboardRoute(),
 ]);
 
 // const startServer = async () => {

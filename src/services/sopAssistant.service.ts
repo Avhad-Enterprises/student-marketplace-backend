@@ -1,5 +1,6 @@
 import DB from '@/database';
 import { SOP, SOPStats, SOPAssistantSettings } from '@/interfaces/sopAssistant.interface';
+import { sanitizePII } from '@/utils/sanitization';
 
 class SopAssistantService {
     public async getSOPs(filters: any) {
@@ -47,23 +48,28 @@ class SopAssistantService {
     }
 
     public async getStats(): Promise<SOPStats> {
-        const totalSOPsCount = await DB('sops').count('id as count').first();
-        const draftsCount = await DB('sops').where('review_status', 'Draft').count('id as count').first();
-        const reviewedCount = await DB('sops').where('review_status', 'Reviewed').count('id as count').first();
+        // Use Knex aggregation for efficiency
+        const [totalSOPsCount, draftsCount, reviewedCount] = await Promise.all([
+            DB('sops').count('id as count').first(),
+            DB('sops').where('review_status', 'Draft').count('id as count').first(),
+            DB('sops').where('review_status', 'Reviewed').count('id as count').first()
+        ]);
 
-        const sops = await DB('sops').select('ai_confidence_score');
-        let avg = 0;
-        if (sops.length > 0) {
-            const scores = sops.map(s => parseInt(s.ai_confidence_score) || 0);
-            avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-        }
+        // Fix confidence calculation to handle '%' string if stored that way
+        const avgResult: any = await DB('sops')
+            .select(DB.raw('AVG(CAST(NULLIF(REPLACE(ai_confidence_score, \'%\', \'\'), \'\') AS INTEGER)) as avg_confidence'))
+            .first();
 
         return {
             totalSOPs: Number(totalSOPsCount?.count || 0),
             draftsCreated: Number(draftsCount?.count || 0),
             reviewedSOPs: Number(reviewedCount?.count || 0),
-            avgConfidence: `${Math.round(avg)}%`
+            avgConfidence: `${Math.round(Number(avgResult?.avg_confidence || 0))}%`
         };
+    }
+
+    public async sanitizeContent(content: string): Promise<string> {
+        return sanitizePII(content);
     }
 
     public async createSOP(data: Partial<SOP>) {
