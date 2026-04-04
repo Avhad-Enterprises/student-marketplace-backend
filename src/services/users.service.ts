@@ -90,6 +90,22 @@ class UserService {
 
     return user;
   }
+  /**
+   * Reset a user's password (admin action) — bcrypt hashes the new password
+   */
+  public async resetUserPassword(userId: string, newPassword: string): Promise<void> {
+    const user = await DB('users').where('id', userId).first();
+    if (!user) throw new HttpException(404, "User not found");
+
+    if (!newPassword || newPassword.length < 6) {
+      throw new HttpException(400, "Password must be at least 6 characters");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await DB('users')
+      .where('id', userId)
+      .update({ password_hash: hashedPassword, updated_at: new Date() });
+  }
 }
 
 export default UserService;

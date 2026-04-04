@@ -69,6 +69,23 @@ class UserController {
             next(error);
         }
     };
+    /**
+     * Reset user password (admin action)
+     */
+    public resetUserPassword = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const userId = req.params.id;
+            const { password } = req.body;
+            if (!password) {
+                res.status(400).json({ message: 'Password is required' });
+                return;
+            }
+            await this.userService.resetUserPassword(userId, password);
+            res.status(200).json({ message: 'Password reset successfully' });
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 
 export default UserController;
