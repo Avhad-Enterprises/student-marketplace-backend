@@ -22,7 +22,7 @@ function request(
 
     if (data) {
       const jsonData = JSON.stringify(data);
-      options.headers["Content-Length"] = Buffer.byteLength(jsonData);
+      (options.headers as any)["Content-Length"] = Buffer.byteLength(jsonData);
     }
 
     const req = http.request(options, (res) => {

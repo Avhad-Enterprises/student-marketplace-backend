@@ -1,4 +1,4 @@
-import db from '../database/db';
+import db from '@/database';
 import { IntegrationsService, SendGridConfig, SmtpConfig } from './integrations.service';
 import { EmailTemplatesService, EmailScenario } from './email-templates.service';
 

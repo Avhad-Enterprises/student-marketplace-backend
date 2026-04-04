@@ -1,6 +1,6 @@
 import http from 'http';
 
-function makeRequest(path: string, method: string = 'GET', body: any = null, token: string = null): Promise<any> {
+function makeRequest(path: string, method: string = 'GET', body: any = null, token: string | null = null): Promise<any> {
     return new Promise((resolve, reject) => {
         const options: any = {
             hostname: 'localhost',

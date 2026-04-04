@@ -7,7 +7,8 @@ import 'dotenv/config';
 function request(
   path: string,
   method: string = "GET",
-  data: any = null
+  data: any = null,
+  token: string | null = null
 ): Promise<{ status: number; body: any }> {
   return new Promise((resolve, reject) => {
     const port = process.env.PORT || 5000;
@@ -23,7 +24,7 @@ function request(
 
     if (data) {
       const jsonData = JSON.stringify(data);
-      options.headers["Content-Length"] = Buffer.byteLength(jsonData);
+      (options.headers as any)["Content-Length"] = Buffer.byteLength(jsonData);
     }
 
     const req = http.request(options, (res) => {

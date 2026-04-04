@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import Route from '@/interfaces/routes.interface';
 import { CampaignsController } from '../controllers/campaigns.controller';
 import { TemplatesController } from '../controllers/templates.controller';
 import { AudienceSegmentsController } from '../controllers/audience-segments.controller';
@@ -7,81 +8,90 @@ import { EmailTemplatesController } from '../controllers/email-templates.control
 import { SenderIdentitiesController } from '../controllers/sender-identities.controller';
 import { AutomationRulesController } from '../controllers/automation-rules.controller';
 
-const router = Router();
-const campaignsController = new CampaignsController();
-const templatesController = new TemplatesController();
-const audienceSegmentsController = new AudienceSegmentsController();
-const communicationSettingsController = new CommunicationSettingsController();
-const emailTemplatesController = new EmailTemplatesController();
-const senderIdentitiesController = new SenderIdentitiesController();
-const automationRulesController = new AutomationRulesController();
+export class CommunicationsRoute implements Route {
+  public path = '/api/communications';
+  public router = Router();
+  
+  private campaignsController = new CampaignsController();
+  private templatesController = new TemplatesController();
+  private audienceSegmentsController = new AudienceSegmentsController();
+  private communicationSettingsController = new CommunicationSettingsController();
+  private emailTemplatesController = new EmailTemplatesController();
+  private senderIdentitiesController = new SenderIdentitiesController();
+  private automationRulesController = new AutomationRulesController();
 
-// Campaigns APIs
-router.get('/campaigns', (req, res) => campaignsController.getCampaigns(req, res));
-router.get('/campaigns/stats', (req, res) => campaignsController.getCampaignStats(req, res));
-router.get('/campaigns/audience-segments', (req, res) => campaignsController.getAudienceSegments(req, res));
-router.post('/campaigns/preview-audience', (req, res) => campaignsController.previewAudience(req, res));
-router.post('/campaigns', (req, res) => campaignsController.createCampaign(req, res));
-router.get('/campaigns/:campaignId', (req, res) => campaignsController.getCampaignById(req, res));
-router.put('/campaigns/:campaignId', (req, res) => campaignsController.updateCampaign(req, res));
-router.delete('/campaigns/:campaignId', (req, res) => campaignsController.deleteCampaign(req, res));
-router.post('/campaigns/:campaignId/duplicate', (req, res) => campaignsController.duplicateCampaign(req, res));
-router.post('/campaigns/:campaignId/send', (req, res) => campaignsController.sendCampaign(req, res));
-router.post('/campaigns/:campaignId/schedule', (req, res) => campaignsController.scheduleCampaign(req, res));
-router.post('/campaigns/:campaignId/pause', (req, res) => campaignsController.pauseCampaign(req, res));
-router.post('/campaigns/:campaignId/resume', (req, res) => campaignsController.resumeCampaign(req, res));
-router.get('/campaigns/:campaignId/recipients', (req, res) => campaignsController.getCampaignRecipients(req, res));
+  constructor() {
+    this.initializeRoutes();
+  }
 
-// Templates APIs
-router.get('/templates', (req, res) => templatesController.getTemplates(req, res));
-router.get('/templates/variables', (req, res) => templatesController.getVariables(req, res));
-router.post('/templates', (req, res) => templatesController.createTemplate(req, res));
-router.get('/templates/:templateId', (req, res) => templatesController.getTemplateById(req, res));
-router.put('/templates/:templateId', (req, res) => templatesController.updateTemplate(req, res));
-router.delete('/templates/:templateId', (req, res) => templatesController.deleteTemplate(req, res));
-router.post('/templates/:templateId/duplicate', (req, res) => templatesController.duplicateTemplate(req, res));
+  private initializeRoutes() {
+    // Campaigns APIs
+    this.router.get('/campaigns', (req, res) => this.campaignsController.getCampaigns(req, res));
+    this.router.get('/campaigns/stats', (req, res) => this.campaignsController.getCampaignStats(req, res));
+    this.router.get('/campaigns/audience-segments', (req, res) => this.campaignsController.getAudienceSegments(req, res));
+    this.router.post('/campaigns/preview-audience', (req, res) => this.campaignsController.previewAudience(req, res));
+    this.router.post('/campaigns', (req, res) => this.campaignsController.createCampaign(req, res));
+    this.router.get('/campaigns/:campaignId', (req, res) => this.campaignsController.getCampaignById(req, res));
+    this.router.put('/campaigns/:campaignId', (req, res) => this.campaignsController.updateCampaign(req, res));
+    this.router.delete('/campaigns/:campaignId', (req, res) => this.campaignsController.deleteCampaign(req, res));
+    this.router.post('/campaigns/:campaignId/duplicate', (req, res) => this.campaignsController.duplicateCampaign(req, res));
+    this.router.post('/campaigns/:campaignId/send', (req, res) => this.campaignsController.sendCampaign(req, res));
+    this.router.post('/campaigns/:campaignId/schedule', (req, res) => this.campaignsController.scheduleCampaign(req, res));
+    this.router.post('/campaigns/:campaignId/pause', (req, res) => this.campaignsController.pauseCampaign(req, res));
+    this.router.post('/campaigns/:campaignId/resume', (req, res) => this.campaignsController.resumeCampaign(req, res));
+    this.router.get('/campaigns/:campaignId/recipients', (req, res) => this.campaignsController.getCampaignRecipients(req, res));
 
-// Global Email Lifecycle Templates APIs
-router.get('/email-templates', (req, res) => emailTemplatesController.getGlobalTemplates(req, res));
-router.put('/email-templates', (req, res) => emailTemplatesController.saveGlobalTemplates(req, res));
-router.delete('/email-templates/:scenario', (req, res) => emailTemplatesController.deleteGlobalTemplate(req, res));
+    // Templates APIs
+    this.router.get('/templates', (req, res) => this.templatesController.getTemplates(req, res));
+    this.router.get('/templates/variables', (req, res) => this.templatesController.getVariables(req, res));
+    this.router.post('/templates', (req, res) => this.templatesController.createTemplate(req, res));
+    this.router.get('/templates/:templateId', (req, res) => this.templatesController.getTemplateById(req, res));
+    this.router.put('/templates/:templateId', (req, res) => this.templatesController.updateTemplate(req, res));
+    this.router.delete('/templates/:templateId', (req, res) => this.templatesController.deleteTemplate(req, res));
+    this.router.post('/templates/:templateId/duplicate', (req, res) => this.templatesController.duplicateTemplate(req, res));
 
-// General Email Templates APIs
-router.get('/all-templates', (req, res) => emailTemplatesController.getAllTemplates(req, res));
-router.post('/all-templates', (req, res) => emailTemplatesController.createTemplate(req, res));
-router.put('/all-templates/:id', (req, res) => emailTemplatesController.updateTemplate(req, res));
-router.delete('/all-templates/:id', (req, res) => emailTemplatesController.deleteTemplate(req, res));
+    // Global Email Lifecycle Templates APIs
+    this.router.get('/email-templates', (req, res) => this.emailTemplatesController.getGlobalTemplates(req, res));
+    this.router.put('/email-templates', (req, res) => this.emailTemplatesController.saveGlobalTemplates(req, res));
+    this.router.delete('/email-templates/:scenario', (req, res) => this.emailTemplatesController.deleteGlobalTemplate(req, res));
 
-// Sender Identities APIs
-router.get('/senders', (req, res) => senderIdentitiesController.getAll(req, res));
-router.post('/senders', (req, res) => senderIdentitiesController.create(req, res));
-router.get('/senders/:id', (req, res) => senderIdentitiesController.getById(req, res));
-router.put('/senders/:id', (req, res) => senderIdentitiesController.update(req, res));
-router.delete('/senders/:id', (req, res) => senderIdentitiesController.delete(req, res));
+    // General Email Templates APIs
+    this.router.get('/all-templates', (req, res) => this.emailTemplatesController.getAllTemplates(req, res));
+    this.router.post('/all-templates', (req, res) => this.emailTemplatesController.createTemplate(req, res));
+    this.router.put('/all-templates/:id', (req, res) => this.emailTemplatesController.updateTemplate(req, res));
+    this.router.delete('/all-templates/:id', (req, res) => this.emailTemplatesController.deleteTemplate(req, res));
 
-// Automation Rules APIs
-router.get('/automation-rules', (req, res) => automationRulesController.getAll(req, res));
-router.post('/automation-rules', (req, res) => automationRulesController.create(req, res));
-router.get('/automation-rules/:id', (req, res) => automationRulesController.getById(req, res));
-router.put('/automation-rules/:id', (req, res) => automationRulesController.update(req, res));
-router.delete('/automation-rules/:id', (req, res) => automationRulesController.delete(req, res));
+    // Sender Identities APIs
+    this.router.get('/senders', (req, res) => this.senderIdentitiesController.getAll(req, res));
+    this.router.post('/senders', (req, res) => this.senderIdentitiesController.create(req, res));
+    this.router.get('/senders/:id', (req, res) => this.senderIdentitiesController.getById(req, res));
+    this.router.put('/senders/:id', (req, res) => this.senderIdentitiesController.update(req, res));
+    this.router.delete('/senders/:id', (req, res) => this.senderIdentitiesController.delete(req, res));
 
-// Audience Segments APIs
-router.get('/segments', (req, res) => audienceSegmentsController.getSegments(req, res));
-router.get('/segments/filter-fields', (req, res) => audienceSegmentsController.getFilterFields(req, res));
-router.post('/segments/preview', (req, res) => audienceSegmentsController.previewSegment(req, res));
-router.post('/segments', (req, res) => audienceSegmentsController.createSegment(req, res));
-router.get('/segments/:segmentId', (req, res) => audienceSegmentsController.getSegmentById(req, res));
-router.put('/segments/:segmentId', (req, res) => audienceSegmentsController.updateSegment(req, res));
-router.delete('/segments/:segmentId', (req, res) => audienceSegmentsController.deleteSegment(req, res));
-router.get('/segments/:segmentId/members', (req, res) => audienceSegmentsController.getSegmentMembers(req, res));
-router.post('/segments/:segmentId/refresh', (req, res) => audienceSegmentsController.refreshSegment(req, res));
+    // Automation Rules APIs
+    this.router.get('/automation-rules', (req, res) => this.automationRulesController.getAll(req, res));
+    this.router.post('/automation-rules', (req, res) => this.automationRulesController.create(req, res));
+    this.router.get('/automation-rules/:id', (req, res) => this.automationRulesController.getById(req, res));
+    this.router.put('/automation-rules/:id', (req, res) => this.automationRulesController.update(req, res));
+    this.router.delete('/automation-rules/:id', (req, res) => this.automationRulesController.delete(req, res));
 
-// Communication Settings APIs
-router.get('/settings', (req, res) => communicationSettingsController.getSettings(req, res));
-router.put('/settings', (req, res) => communicationSettingsController.updateSettings(req, res));
-router.post('/settings/validate', (req, res) => communicationSettingsController.validateSettings(req, res));
-router.get('/settings/quiet-hours', (req, res) => communicationSettingsController.getQuietHoursStatus(req, res));
-router.post('/settings/reset', (req, res) => communicationSettingsController.resetSettings(req, res));
+    // Audience Segments APIs
+    this.router.get('/segments', (req, res) => this.audienceSegmentsController.getSegments(req, res));
+    this.router.get('/segments/filter-fields', (req, res) => this.audienceSegmentsController.getFilterFields(req, res));
+    this.router.post('/segments/preview', (req, res) => this.audienceSegmentsController.previewSegment(req, res));
+    this.router.post('/segments', (req, res) => this.audienceSegmentsController.createSegment(req, res));
+    this.router.get('/segments/:segmentId', (req, res) => this.audienceSegmentsController.getSegmentById(req, res));
+    this.router.put('/segments/:segmentId', (req, res) => this.audienceSegmentsController.updateSegment(req, res));
+    this.router.delete('/segments/:segmentId', (req, res) => this.audienceSegmentsController.deleteSegment(req, res));
+    this.router.get('/segments/:segmentId/members', (req, res) => this.audienceSegmentsController.getSegmentMembers(req, res));
+    this.router.post('/segments/:segmentId/refresh', (req, res) => this.audienceSegmentsController.refreshSegment(req, res));
 
-export default router;
+    // Communication Settings APIs
+    this.router.get('/settings', (req, res) => this.communicationSettingsController.getSettings(req, res));
+    this.router.put('/settings', (req, res) => this.communicationSettingsController.updateSettings(req, res));
+    this.router.post('/settings/validate', (req, res) => this.communicationSettingsController.validateSettings(req, res));
+    this.router.get('/settings/quiet-hours', (req, res) => this.communicationSettingsController.getQuietHoursStatus(req, res));
+    this.router.post('/settings/reset', (req, res) => this.communicationSettingsController.resetSettings(req, res));
+  }
+}
+

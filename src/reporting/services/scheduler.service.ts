@@ -1,4 +1,4 @@
-import cron from "node-cron";
+import * as cron from "node-cron";
 import { Knex } from "knex";
 import { ScheduleService } from "./schedule.service";
 import { ReportService } from "./report.service";

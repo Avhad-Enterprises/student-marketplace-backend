@@ -23,7 +23,7 @@ export class VisaController {
                 ...result
             });
         } catch (error) {
-            logger.error(`[VisaController.getAllVisas] Error: ${error.message}`);
+            logger.error(`[VisaController.getAllVisas] Error: ${(error as any).message}`);
             next(error);
         }
     };
@@ -104,7 +104,7 @@ export class VisaController {
             res.setHeader('Content-Disposition', `attachment; filename=visa-export-${Date.now()}.${extension}`);
             res.status(200).send(data);
         } catch (error) {
-            logger.error(`[VisaController.exportVisa] Error: ${error.message}`);
+            logger.error(`[VisaController.exportVisa] Error: ${(error as any).message}`);
             next(error);
         }
     };

@@ -22,7 +22,7 @@ export class TaxesController {
                 ...result
             });
         } catch (error) {
-            logger.error(`[TaxesController.getAllTaxes] Error: ${error.message}`);
+            logger.error(`[TaxesController.getAllTaxes] Error: ${(error as any).message}`);
             next(error);
         }
     };
@@ -103,7 +103,7 @@ export class TaxesController {
             res.setHeader('Content-Disposition', `attachment; filename=taxes-export-${Date.now()}.${extension}`);
             res.status(200).send(data);
         } catch (error) {
-            logger.error(`[TaxesController.exportTaxes] Error: ${error.message}`);
+            logger.error(`[TaxesController.exportTaxes] Error: ${(error as any).message}`);
             next(error);
         }
     };

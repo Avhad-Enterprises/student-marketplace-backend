@@ -7,7 +7,8 @@ import { logger } from '@/utils/logger';
 
 const authMiddleware = async (req: RequestWithUser, res: Response, next: NextFunction) => {
     try {
-        const Authorization = req.cookies['Authorization'] || (req.header('Authorization') ? req.header('Authorization').split('Bearer ')[1] : null);
+        const authHeader = req.header('Authorization');
+        const Authorization = (req.cookies && req.cookies['Authorization']) || (authHeader ? authHeader.split('Bearer ')[1] : null);
 
         if (Authorization) {
             const secretKey: string = process.env.JWT_SECRET || 'secretKey';

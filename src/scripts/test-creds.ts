@@ -21,7 +21,7 @@ async function testConnection() {
         await client.connect();
         console.log('SUCCESS: Connected to RDS (postgres db)');
     } catch (err) {
-        console.error('FAILURE:', err.message);
+        console.error('FAILURE:', (err as any).message);
     } finally {
         await client.end();
     }

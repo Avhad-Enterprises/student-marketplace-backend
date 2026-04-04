@@ -12,7 +12,6 @@ import { logger, stream } from "./utils/logger";
 import { v4 as uuidv4 } from 'uuid';
 import reportRoutes from "./reporting/routes/report.routes";
 import schemaRoutes from "./reporting/routes/schema.routes";
-import communicationRoutes from "./communications/routes/communications.routes";
 
 class App {
     public app: express.Application;
@@ -125,7 +124,6 @@ class App {
         // External module routes
         this.app.use("/reports", reportRoutes);
         this.app.use("/schemas", schemaRoutes);
-        this.app.use("/communications", communicationRoutes);
     }
 
     private initializeErrorHandling() {

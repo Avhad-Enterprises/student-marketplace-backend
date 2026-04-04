@@ -21,14 +21,14 @@ async function createDatabase() {
         const dbName = process.env.DB_DATABASE || 'StudenMarketPlace';
         const res = await client.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
 
-        if (process.env.DROP_DATABASE === 'true' && res.rowCount > 0) {
+        if (process.env.DROP_DATABASE === 'true' && (res.rowCount || 0) > 0) {
             console.log(`Dropping database ${dbName}...`);
             await client.query(`DROP DATABASE "${dbName}"`);
             console.log(`Database ${dbName} dropped.`);
-            res.rowCount = 0; // Force creation logic below
+            (res as any).rowCount = 0; // Force creation logic below
         }
 
-        if (res.rowCount === 0) {
+        if ((res.rowCount || 0) === 0) {
             console.log(`Creating database ${dbName}...`);
             // CREATE DATABASE cannot be run in a transaction, and Client.query usually runs in one if not careful
             // But simple client.query(CREATE DATABASE) works if no TRANSACTION is started.
@@ -38,7 +38,7 @@ async function createDatabase() {
             console.log(`Database ${dbName} already exists.`);
         }
     } catch (err) {
-        console.error('Error creating database:', err.message);
+        console.error('Error creating database:', (err as any).message);
         process.exit(1);
     } finally {
         await client.end();

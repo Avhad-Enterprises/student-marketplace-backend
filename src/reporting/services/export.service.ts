@@ -23,7 +23,7 @@ export class ExportService {
             worksheet.getRow(1).font = { bold: true };
         }
 
-        return workbook.xlsx.writeBuffer() as Promise<Buffer>;
+        return workbook.xlsx.writeBuffer() as any as Promise<Buffer>;
     }
 
     static toPDF(data: any[], res: Response): void {

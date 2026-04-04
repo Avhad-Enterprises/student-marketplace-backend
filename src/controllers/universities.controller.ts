@@ -64,6 +64,9 @@ export class UniversityController {
   public createUniversity = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await this.universityService.create(req.body);
+      if (!result) {
+        return res.status(500).json({ error: "Failed to create university" });
+      }
       res.status(201).json({ id: result.id, message: "University created" });
     } catch (err) {
       next(err);

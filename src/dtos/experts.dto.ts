@@ -2,74 +2,74 @@ import { IsString, IsEmail, IsOptional, IsNumber, IsUrl } from 'class-validator'
 
 export class CreateExpertDto {
     @IsString()
-    public full_name: string;
+    public full_name!: string;
 
     @IsEmail()
-    public email: string;
+    public email!: string;
 
     @IsString()
     @IsOptional()
-    public phone: string;
+    public phone!: string;
 
     @IsString()
     @IsOptional()
-    public specialization: string;
+    public specialization!: string;
 
     @IsNumber()
     @IsOptional()
-    public experience_years: number;
+    public experience_years!: number;
 
     @IsNumber()
     @IsOptional()
-    public rating: number;
+    public rating!: number;
 
     @IsString()
     @IsOptional()
-    public status: string;
+    public status!: string;
 
     @IsString()
     @IsOptional()
-    public avatar_url: string;
+    public avatar_url!: string;
 
     @IsString()
     @IsOptional()
-    public bio: string;
+    public bio!: string;
 }
 
 export class UpdateExpertDto {
     @IsString()
     @IsOptional()
-    public full_name: string;
+    public full_name!: string;
 
     @IsEmail()
     @IsOptional()
-    public email: string;
+    public email!: string;
 
     @IsString()
     @IsOptional()
-    public phone: string;
+    public phone!: string;
 
     @IsString()
     @IsOptional()
-    public specialization: string;
+    public specialization!: string;
 
     @IsNumber()
     @IsOptional()
-    public experience_years: number;
+    public experience_years!: number;
 
     @IsNumber()
     @IsOptional()
-    public rating: number;
+    public rating!: number;
 
     @IsString()
     @IsOptional()
-    public status: string;
+    public status!: string;
 
     @IsString()
     @IsOptional()
-    public avatar_url: string;
+    public avatar_url!: string;
 
     @IsString()
     @IsOptional()
-    public bio: string;
+    public bio!: string;
 }

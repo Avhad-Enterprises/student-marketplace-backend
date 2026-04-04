@@ -22,6 +22,11 @@ class AuthController {
     public changePassword = async (req: RequestWithUser, res: Response, next: NextFunction) => {
         try {
             const { currentPassword, newPassword } = req.body;
+            
+            if (!req.user) {
+                return res.status(401).json({ message: 'User not authenticated' });
+            }
+            
             const userId = req.user.id;
 
             await this.authService.changePassword(userId, currentPassword, newPassword);

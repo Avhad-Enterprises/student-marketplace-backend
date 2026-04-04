@@ -20,7 +20,7 @@ import { StudentServicesRoute } from "./routes/studentServices.route";
 import { PaymentRoute } from "./routes/payments.route";
 import { NoteRoute } from "./routes/notes.route";
 import { ActivityRoute } from "./routes/activities.route";
-import { CommunicationRoute } from "./routes/communications.route";
+import { CommunicationsRoute } from "./communications/routes/communications.routes";
 import { PartnerRoute } from "./routes/partners.route";
 import { SimCardRoute } from "./routes/simCards.route";
 import { BankRoute } from "./routes/banks.route";
@@ -83,7 +83,7 @@ const app = new App([
   new PaymentRoute(),
   new NoteRoute(),
   new ActivityRoute(),
-  new CommunicationRoute(),
+  new CommunicationsRoute(),
   new PartnerRoute(),
   new SimCardRoute(),
   new BankRoute(),

@@ -1,4 +1,4 @@
-import db from '../database/db';
+import db from '@/database';
 import { Knex } from 'knex';
 
 export interface SegmentRule {
@@ -132,15 +132,11 @@ export class AudienceSegmentsService {
   }
 
   // Resolve segment members
-  async resolveSegmentMembers(eventId: number | null | undefined, rules: SegmentRule[], matchType: 'ALL' | 'ANY'): Promise<any[]> {
+  async resolveSegmentMembers(eventId: number | null | undefined, rules: SegmentRule[], matchType: 'ALL' | 'ANY'): Promise<any> {
     const effectiveEventId = (eventId === 0 || !eventId) ? null : eventId;
-    let query = db('issued_tickets as a')
-      .leftJoin('tickets as t', 'a.ticket_type_id', 't.id')
-      .leftJoin('event_registrations as r', 'a.registration_id', 'r.id')
-      .select('a.id', 'a.holder_name', 'a.holder_email', 't.name as ticket_name')
-      .andWhere('a.is_deleted', false);
-
-    if (effectiveEventId) query = query.where('a.event_id', effectiveEventId);
+    let query = db('students as s') // Changed to students based on project context
+      .select('s.id', 's.first_name', 's.last_name', 's.email')
+      .whereRaw('1=1');
 
     if (rules.length === 0) return query;
 
@@ -158,6 +154,72 @@ export class AudienceSegmentsService {
     }
 
     return query;
+  }
+
+  // Update segment
+  async updateSegment(eventId: number | null | undefined, segmentId: number, input: UpdateSegmentInput): Promise<AudienceSegment | null> {
+    const effectiveEventId = (eventId === 0 || !eventId) ? null : eventId;
+    const current = await this.getSegmentById(effectiveEventId, segmentId);
+    if (!current) return null;
+
+    const updateData: any = {
+      updated_at: db.fn.now(),
+    };
+
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.description !== undefined) updateData.description = input.description;
+    if (input.match_type !== undefined) updateData.match_type = input.match_type;
+    if (input.rules_json !== undefined) updateData.rules_json = JSON.stringify(input.rules_json);
+    if (input.is_active !== undefined) updateData.is_active = input.is_active;
+
+    // Recalculate count if rules or match_type changed
+    if (input.rules_json !== undefined || input.match_type !== undefined) {
+      const rules = input.rules_json || current.rules_json;
+      const matchType = input.match_type || current.match_type;
+      updateData.estimated_count = await this.evaluateSegmentRules(effectiveEventId, rules, matchType);
+      updateData.last_evaluated_at = db.fn.now();
+      
+      // Update cache
+      await this.cacheSegmentMembers(segmentId, effectiveEventId, rules, matchType);
+    }
+
+    const [updated] = await db('audience_segments')
+      .where('id', segmentId)
+      .update(updateData)
+      .returning('*');
+
+    return {
+      ...updated,
+      rules_json: typeof updated.rules_json === 'string' ? JSON.parse(updated.rules_json) : updated.rules_json,
+    };
+  }
+
+  // Delete segment
+  async deleteSegment(eventId: number | null | undefined, segmentId: number): Promise<boolean> {
+    const effectiveEventId = (eventId === 0 || !eventId) ? null : eventId;
+    const query = db('audience_segments').where('id', segmentId);
+    if (effectiveEventId === null) query.whereNull('event_id');
+    else query.where('event_id', effectiveEventId);
+
+    const updated = await query.update({ is_deleted: true, updated_at: db.fn.now() });
+    return updated > 0;
+  }
+
+  // Preview segment members
+  async previewSegmentMembers(
+    eventId: number | null | undefined,
+    rules: SegmentRule[],
+    matchType: 'ALL' | 'ANY',
+    limit: number = 10
+  ): Promise<{ members: any[]; total: number }> {
+    const query = await this.resolveSegmentMembers(eventId, rules, matchType);
+    const members = await query.limit(limit);
+    const total = await this.evaluateSegmentRules(eventId, rules, matchType);
+    
+    return {
+      members,
+      total
+    };
   }
 
   private applyRule(query: any, rule: SegmentRule): any {

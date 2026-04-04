@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { SchemaService } from "../services/schema.service";
-import db from "../../../database/db";
+import db from "@/database";
 
 const schemaService = new SchemaService(db);
 

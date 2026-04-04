@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ReportService } from "../services/report.service";
-import db from "../../../database/db";
+import db from "@/database";
 
 const reportService = new ReportService(db);
 

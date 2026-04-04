@@ -42,6 +42,15 @@ export const Tables = {
   MESSAGE_TEMPLATES: "message_templates",
   DELIVERY_SAFETY_SETTINGS: "delivery_safety_settings",
   GENERAL_SETTINGS: "general_settings",
+  USERS: "users",
+  ROLES: "roles",
+  // Communications module tables
+  INTEGRATION_CONFIGS: "integration_configs",
+  COMMUNICATION_TEMPLATES: "communication_templates",
+  EMAIL_LOGS: "email_logs",
+  SENDER_IDENTITIES: "sender_identities",
+  AUTOMATION_RULES: "automation_rules",
+  AUDIENCE_SEGMENTS: "audience_segments",
 };
 
 /**
@@ -68,9 +77,9 @@ export async function initializeTables() {
     await initSupportContent();
     // 8. AI & Advanced Tools
     await initAIServices();
-    // 9. Security & Privacy
-    await initSecuritySafety();
-    // 10. General Settings
+    // 10. Communications & Lifecycle
+    await initCommunications();
+    // 11. General Settings
     await initGeneralSettings();
 
     logger.info("Database initialization completed successfully");
@@ -463,5 +472,85 @@ async function initGeneralSettings() {
       ('terms_of_use', '', 'legal'),
       ('gdpr_enabled', 'false', 'compliance')
     ON CONFLICT (key) DO NOTHING;
+  `);
+}
+
+async function initCommunications() {
+  await DB.raw(`
+    -- Integration Configs (SendGrid, SMTP, etc.)
+    CREATE TABLE IF NOT EXISTS integration_configs (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER REFERENCES universities(id) ON DELETE CASCADE,
+      type VARCHAR(50) NOT NULL, -- email, sms, whatsapp
+      provider VARCHAR(50) NOT NULL, -- sendgrid, smtp, twilio
+      is_enabled BOOLEAN DEFAULT TRUE,
+      config TEXT, -- JSON configuration
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Communication Templates (Generic templates)
+    CREATE TABLE IF NOT EXISTS communication_templates (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER REFERENCES universities(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      channel VARCHAR(50) NOT NULL,
+      subject TEXT,
+      content TEXT NOT NULL,
+      is_deleted BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Email Logs
+    CREATE TABLE IF NOT EXISTS email_logs (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER REFERENCES universities(id) ON DELETE CASCADE,
+      scenario VARCHAR(100),
+      to_email VARCHAR(255) NOT NULL,
+      subject TEXT,
+      status VARCHAR(50) NOT NULL, -- sent, failed, skipped
+      provider VARCHAR(50),
+      message_id VARCHAR(255),
+      error_message TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Sender Identities
+    CREATE TABLE IF NOT EXISTS sender_identities (
+      id SERIAL PRIMARY KEY,
+      display_name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      reply_to VARCHAR(255),
+      linked_brand VARCHAR(255),
+      status VARCHAR(50) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Automation Rules
+    CREATE TABLE IF NOT EXISTS automation_rules (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER REFERENCES universities(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      trigger_event VARCHAR(100) NOT NULL,
+      action_type VARCHAR(100) NOT NULL,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Audience Segments
+    CREATE TABLE IF NOT EXISTS audience_segments (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER REFERENCES universities(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      match_type VARCHAR(50) DEFAULT 'ALL',
+      rules_json TEXT, -- JSON rules
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }

@@ -1,5 +1,5 @@
-import db from '../database/db';
-import { TemplatesService } from './templates.service';
+import db from '@/database';
+import { EmailTemplatesService } from './email-templates.service';
 
 export interface Campaign {
   id: number;
@@ -80,10 +80,10 @@ export interface CampaignRecipient {
 }
 
 export class CampaignsService {
-  private templatesService: TemplatesService;
+  private templatesService: EmailTemplatesService;
 
   constructor() {
-    this.templatesService = new TemplatesService();
+    this.templatesService = new EmailTemplatesService();
   }
 
   // Calculate rates
@@ -317,7 +317,7 @@ export class CampaignsService {
       case 'all':
         break;
       case 'vip':
-        query = query.andWhere(function () {
+        query = query.andWhere(function (this: any) {
           this.where('t.name', 'ilike', '%vip%')
             .orWhere('t.category', '=', 'vip');
         });
