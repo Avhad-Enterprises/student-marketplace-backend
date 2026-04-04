@@ -1,39 +1,35 @@
 {
-    "compilerOptions": {
-        "target": "es2017",
-        "lib": [
-            "es2017",
-            "esnext.asynciterable"
-        ],
-        "typeRoots": [
-            "./node_modules/@types"
-        ],
-        "allowSyntheticDefaultImports": true,
-        "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
-        "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
-        "module": "commonjs",
-        "pretty": true,
-        "sourceMap": true,
-        "outDir": "./build",
-        "allowJs": false,
-        "noEmit": false,
-        "esModuleInterop": true,
-        "strict": false,
-        "skipLibCheck": true,
-        "resolveJsonModule": true,
-        "baseUrl": "./src",
-        "paths": {
-            "@/*": ["*"]
-        }
+  "compilerOptions": {
+    /* ✅ File Structure */
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    /* ✅ Module (IMPORTANT CHANGE) */
+    "module": "commonjs",
+    "target": "ES2020",
+
+    /* ✅ Node Support */
+    "lib": ["ES2020"],
+    "types": ["node"],
+
+    /* ✅ Path Alias (YOU ARE USING @/...) */
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"]
     },
-    "include": [
-        "./src/**/*"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist",
-        "build"
-    ]
+
+    /* ✅ Compatibility */
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    /* ✅ Strictness */
+    "strict": true,
+    "skipLibCheck": true,
+
+    /* ✅ Debugging */
+    "sourceMap": true
+  },
+
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }
