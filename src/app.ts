@@ -10,6 +10,9 @@ import Routes from "./interfaces/routes.interface";
 import errorMiddleware from "./middlewares/error.middleware";
 import { logger, stream } from "./utils/logger";
 import { v4 as uuidv4 } from 'uuid';
+import reportRoutes from "./reporting/routes/report.routes";
+import schemaRoutes from "./reporting/routes/schema.routes";
+import communicationRoutes from "./communications/routes/communications.routes";
 
 class App {
     public app: express.Application;
@@ -114,9 +117,15 @@ class App {
 
 
     private initializeRoutes(routes: Routes[]) {
+        // Existing class-based routes
         routes.forEach((route) => {
             this.app.use(route.path || "/", route.router);
         });
+
+        // External module routes
+        this.app.use("/reports", reportRoutes);
+        this.app.use("/schemas", schemaRoutes);
+        this.app.use("/communications", communicationRoutes);
     }
 
     private initializeErrorHandling() {
