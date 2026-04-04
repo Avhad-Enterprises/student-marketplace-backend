@@ -63,7 +63,7 @@ import FileSettingsRoute from "./routes/fileSettings.route";
 import PolicySettingsRoute from "./routes/policySettings.route";
 import GeneralSettingsRoute from "./routes/generalSettings.route";
 import { HealthRoute } from "./routes/health.route";
-import DashboardRoute from "./routes/dashboard.route";
+import { DashboardRoute } from "./routes/dashboard.route";
 
 validateEnv();
 
@@ -72,6 +72,7 @@ const app = new App([
   new UserRoute(),
   new RoleRoute(),
   new AuthRoute(),
+  new DashboardRoute(),
   new StudentRoute(),
   new UniversityRoute(),
   new ApplicationRoute(),
@@ -122,7 +123,6 @@ const app = new App([
   new FileSettingsRoute(),
   new PolicySettingsRoute(),
   new GeneralSettingsRoute(),
-  new DashboardRoute(),
 ]);
 
 // const startServer = async () => {

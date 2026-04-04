@@ -1,9 +1,10 @@
-import { Router } from 'express';
-import DashboardController from '@/controllers/dashboard.controller';
-import Route from '@/interfaces/routes.interface';
+import { Router } from "express";
+import DashboardController from "@/controllers/dashboard.controller";
+import Route from "@/interfaces/routes.interface";
+import authMiddleware from "@/middlewares/auth.middleware";
 
-class DashboardRoute implements Route {
-  public path = '/dashboard';
+export class DashboardRoute implements Route {
+  public path = "/api/dashboard";
   public router = Router();
   public dashboardController = new DashboardController();
 
@@ -12,8 +13,12 @@ class DashboardRoute implements Route {
   }
 
   private initializeRoutes() {
-    this.router.get(`${this.path}/stats`, this.dashboardController.getDashboardStats);
+    // Add authMiddleware to protect dashboard statistics
+    this.router.get("/stats", authMiddleware, this.dashboardController.getDashboardStats);
+    
+    // Add a simple ping route for debugging
+    this.router.get("/ping", (req, res) => {
+      res.status(200).json({ message: "Dashboard API is reachable" });
+    });
   }
 }
-
-export default DashboardRoute;
