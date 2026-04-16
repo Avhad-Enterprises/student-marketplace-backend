@@ -10,12 +10,16 @@ export class InsuranceController {
             const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
             const search = req.query.search as string;
             const status = req.query.status as string;
-            const coverage_type = req.query.coverage_type as string;
+            const insurance_type = req.query.insurance_type as string;
             const student_visible = req.query.student_visible !== undefined ? req.query.student_visible === 'true' : undefined;
             const sort = req.query.sort as string;
             const order = req.query.order as string;
 
-            const result = await this.insuranceService.findAll(page, limit, search, status, coverage_type, student_visible, sort, order);
+            const user = (req as any).user;
+            const result = await this.insuranceService.findAll(
+                page, limit, search, status, insurance_type, student_visible, sort, order,
+                user?.user_type, user?.id
+            );
 
             res.status(200).json({ data: result.data, pagination: result.pagination, message: "findAll" });
         } catch (error) {
@@ -26,7 +30,8 @@ export class InsuranceController {
     public getInsuranceById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const insuranceId = req.params.id;
-            const findInsuranceData = await this.insuranceService.findById(insuranceId);
+            const user = (req as any).user;
+            const findInsuranceData = await this.insuranceService.findById(insuranceId, user?.user_type, user?.id);
 
             res.status(200).json({ data: findInsuranceData, message: "findOne" });
         } catch (error) {
@@ -37,6 +42,13 @@ export class InsuranceController {
     public createInsurance = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const insuranceData = req.body;
+            const user = (req as any).user;
+
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                insuranceData.provider_id = user.id;
+            }
+
             const createInsuranceData = await this.insuranceService.create(insuranceData);
 
             res.status(201).json({ data: createInsuranceData, message: "created" });
@@ -49,7 +61,14 @@ export class InsuranceController {
         try {
             const insuranceId = req.params.id;
             const insuranceData = req.body;
-            const updateInsuranceData = await this.insuranceService.update(insuranceId, insuranceData);
+            const user = (req as any).user;
+
+            const updateInsuranceData = await this.insuranceService.update(insuranceId, insuranceData, user?.user_type, user?.id);
+
+            if (!updateInsuranceData) {
+                res.status(404).json({ message: "Insurance not found or unauthorized" });
+                return;
+            }
 
             res.status(200).json({ data: updateInsuranceData, message: "updated" });
         } catch (error) {
@@ -60,7 +79,13 @@ export class InsuranceController {
     public deleteInsurance = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const insuranceId = req.params.id;
-            const deleteInsuranceData = await this.insuranceService.delete(insuranceId);
+            const user = (req as any).user;
+            const deleteInsuranceData = await this.insuranceService.delete(insuranceId, user?.user_type, user?.id);
+
+            if (!deleteInsuranceData) {
+                res.status(404).json({ message: "Insurance not found or unauthorized" });
+                return;
+            }
 
             res.status(200).json({ data: deleteInsuranceData, message: "deleted" });
         } catch (error) {

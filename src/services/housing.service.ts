@@ -1,5 +1,6 @@
 import DB from "@/database";
 import { Housing } from "@/interfaces/housing.interface";
+import cache from "@/utils/cache";
 
 export class HousingService {
     // GET all housing with pagination and search
@@ -11,12 +12,24 @@ export class HousingService {
         housing_type?: string,
         student_visible?: boolean,
         sort: string = "created_at",
-        order: string = "desc"
+        order: string = "desc",
+        userRole?: string,
+        providerId?: string | number
     ) {
+        const cacheKey = cache.generateKey('housing:list', { page, limit, search, status, housing_type, student_visible, sort, order, userRole, providerId });
+        const cachedData = cache.get<any>(cacheKey);
+        if (cachedData) return cachedData;
+
         const offset = (page - 1) * limit;
 
-        const countQuery = DB('housing').count('* as count');
-        const dataQuery = DB('housing').select('*');
+        const countQuery = DB('housing').where('is_deleted', false);
+        const dataQuery = DB('housing').where('is_deleted', false);
+
+        // RBAC: Provider only sees their own data
+        if (userRole === 'provider' && providerId) {
+            countQuery.andWhere('provider_id', providerId);
+            dataQuery.andWhere('provider_id', providerId);
+        }
 
         if (search) {
             const term = `%${search}%`;
@@ -64,7 +77,7 @@ export class HousingService {
 
         const rows = await dataQuery.limit(limit).offset(offset);
 
-        return {
+        const result = {
             data: rows,
             pagination: {
                 total,
@@ -73,11 +86,20 @@ export class HousingService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
     // GET housing by ID
-    public async findById(id: string | number) {
-        const result = await DB('housing').where('id', id).first();
+    public async findById(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('housing').where('id', id).andWhere('is_deleted', false);
+        
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const result = await query.first();
         return result || null;
     }
 
@@ -99,11 +121,21 @@ export class HousingService {
         };
 
         const inserted = await DB('housing').insert(payload).returning('*');
+        cache.del('housing:');
         return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
     // UPDATE housing
-    public async update(id: string | number, housingData: any) {
+    public async update(id: string | number, housingData: any, userRole?: string, providerId?: string | number) {
+        let query = DB('housing').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const existing = await query.first();
+        if (!existing) return null;
+
         const payload: any = {
             updated_at: DB.fn.now(),
         };
@@ -121,27 +153,45 @@ export class HousingService {
         if (housingData.popularity !== undefined) payload.popularity = housingData.popularity;
 
         const updated = await DB('housing').where('id', id).update(payload).returning('*');
+        if (updated) cache.del('housing:');
         return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
     }
 
     // DELETE housing
-    public async delete(id: string | number) {
-        const deleted = await DB('housing').where('id', id).del().returning('*');
-        return Array.isArray(deleted) && deleted.length > 0;
+    public async delete(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('housing').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const deletedCount = await query.update({ is_deleted: true, updated_at: DB.fn.now() });
+        if (deletedCount > 0) cache.del('housing:');
+        return deletedCount > 0;
     }
 
     // GET housing metrics
     public async getMetrics() {
-        const totalProviders = await DB('housing').countDistinct('provider_name as count').first();
-        const citiesCovered = await DB('housing').countDistinct('location as count').first(); // Best effort for cities
-        const totalListings = await DB('housing').count('* as count').first(); // In this simple table, 1 row = 1 provider/listing set
-        const mostPopular = await DB('housing').orderBy('popularity', 'desc').select('provider_name').first();
+        const cacheKey = 'housing:metrics';
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
 
-        return {
-            totalProviders: parseInt((totalProviders as any).count || 0),
-            citiesCovered: parseInt((citiesCovered as any).count || 0),
-            totalListings: parseInt((totalListings as any).count || 0),
-            mostPopular: (mostPopular as any)?.provider_name || 'N/A',
+        const metrics = await DB('housing')
+            .where('is_deleted', false)
+            .select(
+                DB.raw('count(distinct provider_name) as total_providers'),
+                DB.raw('count(distinct location) as cities_covered'),
+                DB.raw('count(*) as total_listings')
+            )
+            .first();
+
+        const result = {
+            totalProviders: parseInt(String(metrics?.total_providers || 0)),
+            citiesCovered: parseInt(String(metrics?.cities_covered || 0)),
+            totalListings: parseInt(String(metrics?.total_listings || 0)),
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 }

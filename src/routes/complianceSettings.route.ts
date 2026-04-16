@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Route from '../interfaces/routes.interface';
 import ComplianceSettingsController from '@/controllers/complianceSettings.controller';
 import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
 
 class ComplianceSettingsRoute implements Route {
   public path = '/api/settings/compliance';
@@ -13,8 +14,9 @@ class ComplianceSettingsRoute implements Route {
   }
 
   private initializeRoutes() {
-    this.router.get(`/`, authMiddleware, this.complianceSettingsController.getSettings);
-    this.router.post(`/`, authMiddleware, this.complianceSettingsController.updateSettings);
+    this.router.use(authMiddleware, roleMiddleware(['admin']));
+    this.router.get(`/`, this.complianceSettingsController.getSettings);
+    this.router.post(`/`, this.complianceSettingsController.updateSettings);
   }
 }
 

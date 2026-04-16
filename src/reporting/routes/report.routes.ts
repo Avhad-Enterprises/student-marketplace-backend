@@ -1,4 +1,6 @@
 import { Router } from "express";
+import authMiddleware from "../../middlewares/auth.middleware";
+import roleMiddleware from "../../middlewares/role.middleware";
 import {
     runReport,
     saveReport,
@@ -10,6 +12,11 @@ import {
 } from "../controllers/report.controller";
 
 const router = Router();
+
+// Apply authMiddleware and roleMiddleware to all reporting routes
+// Only admins are allowed to access the reporting module
+router.use(authMiddleware);
+router.use(roleMiddleware(['admin']));
 
 router.post("/run", runReport);
 

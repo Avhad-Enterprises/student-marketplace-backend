@@ -50,3 +50,29 @@ export const sanitizeStudentName = (text: string, studentName?: string): string 
 
   return sanitized;
 };
+
+/**
+ * Basic HTML/XSS Sanitization
+ * Strips script tags and event handlers (onmouseover, onclick, etc.)
+ */
+export const sanitizeHTML = (html: string): string => {
+  if (!html) return html;
+
+  let sanitized = html;
+
+  // 1. Remove script tags and their content
+  sanitized = sanitized.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, '');
+
+  // 2. Remove event handlers starts with 'on'
+  sanitized = sanitized.replace(/\son[a-zA-Z]+\s*=\s*['"][^'"]*['"]/gim, '');
+  sanitized = sanitized.replace(/\son[a-zA-Z]+\s*=\s*[^\s>]+/gim, '');
+
+  // 3. Remove javascript: pseudo-protocol
+  sanitized = sanitized.replace(/href\s*=\s*['"]\s*javascript:[^'"]*['"]/gim, '');
+
+  // 4. Remove iframe, object, embed tags
+  sanitized = sanitized.replace(/<(iframe|object|embed|form)\b[^>]*>([\s\S]*?)<\/(iframe|object|embed|form)>/gim, '');
+  sanitized = sanitized.replace(/<(iframe|object|embed|form)\b[^>]*\/?>/gim, '');
+
+  return sanitized;
+};

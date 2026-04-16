@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Route from '../interfaces/routes.interface';
 import LocalizationSettingsController from '@/controllers/localizationSettings.controller';
 import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
 
 class LocalizationSettingsRoute implements Route {
   public path = '/api/settings/localization';
@@ -13,8 +14,9 @@ class LocalizationSettingsRoute implements Route {
   }
 
   private initializeRoutes() {
-    this.router.get(`/`, authMiddleware, this.localizationSettingsController.getSettings);
-    this.router.post(`/`, authMiddleware, this.localizationSettingsController.updateSettings);
+    this.router.use(authMiddleware, roleMiddleware(['admin']));
+    this.router.get(`/`, this.localizationSettingsController.getSettings);
+    this.router.post(`/`, this.localizationSettingsController.updateSettings);
   }
 }
 

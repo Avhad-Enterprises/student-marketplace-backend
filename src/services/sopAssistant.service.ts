@@ -37,6 +37,7 @@ class SopAssistantService {
         const sops = await query.orderBy(sortField, order);
         return sops.map(sop => ({
             id: sop.id.toString(),
+            studentId: sop.student_id,
             studentName: sop.student_name,
             country: sop.country,
             university: sop.university,
@@ -47,6 +48,11 @@ class SopAssistantService {
         }));
     }
 
+    public async getSOPById(id: string): Promise<any> {
+        const sop = await DB('sops').where({ id }).first();
+        return sop;
+    }
+
     public async getStats(): Promise<SOPStats> {
         // Use Knex aggregation for efficiency
         const [totalSOPsCount, draftsCount, reviewedCount] = await Promise.all([
@@ -55,9 +61,18 @@ class SopAssistantService {
             DB('sops').where('review_status', 'Reviewed').count('id as count').first()
         ]);
 
-        // Fix confidence calculation to handle '%' string if stored that way
+        // Fix confidence calculation to handle '%' string and decimal formats (e.g., 0.95 vs 95%)
         const avgResult: any = await DB('sops')
-            .select(DB.raw('AVG(CAST(NULLIF(REPLACE(ai_confidence_score, \'%\', \'\'), \'\') AS INTEGER)) as avg_confidence'))
+            .select(DB.raw(`
+                AVG(
+                    CASE 
+                        WHEN ai_confidence_score ~ '%' THEN CAST(REPLACE(ai_confidence_score, '%', '') AS NUMERIC)
+                        WHEN ai_confidence_score ~ '^[0-9.]+$' AND CAST(ai_confidence_score AS NUMERIC) <= 1 THEN CAST(ai_confidence_score AS NUMERIC) * 100
+                        WHEN ai_confidence_score ~ '^[0-9.]+$' THEN CAST(ai_confidence_score AS NUMERIC)
+                        ELSE 0 
+                    END
+                ) as avg_confidence
+            `))
             .first();
 
         return {
@@ -74,6 +89,7 @@ class SopAssistantService {
 
     public async createSOP(data: Partial<SOP>) {
         const [id] = await DB('sops').insert({
+            student_id: data.student_id,
             student_name: data.student_name,
             country: data.country,
             university: data.university,
@@ -110,6 +126,7 @@ class SopAssistantService {
     public async importSOPs(sops: any[]) {
         for (const sop of sops) {
             const row: any = {
+                student_id: sop.studentId || sop.student_id,
                 student_name: sop.studentName || sop.student_name,
                 country: sop.country,
                 university: sop.university,

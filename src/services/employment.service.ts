@@ -1,5 +1,6 @@
 import DB from "@/database";
 import { Employment } from "@/interfaces/employment.interface";
+import cache from "@/utils/cache";
 
 export class EmploymentService {
     // GET all employment with pagination and search
@@ -11,12 +12,24 @@ export class EmploymentService {
         service_type?: string,
         student_visible?: boolean,
         sort: string = "created_at",
-        order: string = "desc"
+        order: string = "desc",
+        userRole?: string,
+        providerId?: string | number
     ) {
+        const cacheKey = cache.generateKey('employment:list', { page, limit, search, status, service_type, student_visible, sort, order, userRole, providerId });
+        const cachedData = cache.get<any>(cacheKey);
+        if (cachedData) return cachedData;
+
         const offset = (page - 1) * limit;
 
-        const countQuery = DB('employment').count('* as count');
-        const dataQuery = DB('employment').select('*');
+        const countQuery = DB('employment').where('is_deleted', false);
+        const dataQuery = DB('employment').where('is_deleted', false);
+
+        // RBAC: Provider only sees their own data
+        if (userRole === 'provider' && providerId) {
+            countQuery.andWhere('provider_id', providerId);
+            dataQuery.andWhere('provider_id', providerId);
+        }
 
         if (search) {
             const term = `%${search}%`;
@@ -58,7 +71,7 @@ export class EmploymentService {
 
         const rows = await dataQuery.limit(limit).offset(offset);
 
-        return {
+        const result = {
             data: rows,
             pagination: {
                 total,
@@ -67,37 +80,51 @@ export class EmploymentService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
     // GET employment by ID
-    public async findById(id: string | number) {
-        const result = await DB('employment').where('id', id).first();
+    public async findById(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('employment').where('id', id).andWhere('is_deleted', false);
+        
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const result = await query.first();
         return result || null;
     }
 
     // CREATE employment
     public async create(employmentData: any) {
-        const reference_id = employmentData.reference_id || employmentData.referenceId || `EMP-${Date.now()}`;
-
         const payload = {
-            reference_id,
             platform: employmentData.platform,
             service_type: employmentData.service_type || employmentData.serviceType,
             job_types: employmentData.job_types || employmentData.jobTypes,
-            countries_covered: employmentData.countries_covered !== undefined ? employmentData.countries_covered : (employmentData.countriesCovered || 0),
             status: employmentData.status || 'active',
             student_visible: employmentData.student_visible !== undefined ? employmentData.student_visible : (employmentData.studentVisible !== undefined ? employmentData.studentVisible : true),
             avg_salary: employmentData.avg_salary || employmentData.avgSalary,
-            verified: employmentData.verified !== undefined ? employmentData.verified : false,
-            popularity: employmentData.popularity !== undefined ? employmentData.popularity : (employmentData.popularity || 0),
+            provider_id: employmentData.provider_id,
         };
 
         const inserted = await DB('employment').insert(payload).returning('*');
+        cache.del('employment:');
         return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
     // UPDATE employment
-    public async update(id: string | number, employmentData: any) {
+    public async update(id: string | number, employmentData: any, userRole?: string, providerId?: string | number) {
+        let query = DB('employment').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const existing = await query.first();
+        if (!existing) return null;
+
         const payload: any = {
             updated_at: DB.fn.now(),
         };
@@ -106,41 +133,52 @@ export class EmploymentService {
         if (employmentData.service_type || employmentData.serviceType) payload.service_type = employmentData.service_type || employmentData.serviceType;
         if (employmentData.job_types !== undefined) payload.job_types = employmentData.job_types;
         if (employmentData.jobTypes !== undefined) payload.job_types = employmentData.jobTypes;
-        if (employmentData.countries_covered !== undefined) payload.countries_covered = employmentData.countries_covered;
-        if (employmentData.countriesCovered !== undefined) payload.countries_covered = employmentData.countriesCovered;
         if (employmentData.status) payload.status = employmentData.status;
         if (employmentData.student_visible !== undefined) payload.student_visible = employmentData.student_visible;
         if (employmentData.studentVisible !== undefined) payload.student_visible = employmentData.studentVisible;
         if (employmentData.avg_salary || employmentData.avgSalary) payload.avg_salary = employmentData.avg_salary || employmentData.avgSalary;
-        if (employmentData.verified !== undefined) payload.verified = employmentData.verified;
-        if (employmentData.popularity !== undefined) payload.popularity = employmentData.popularity;
 
         const updated = await DB('employment').where('id', id).update(payload).returning('*');
+        if (updated) cache.del('employment:');
         return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
     }
 
     // DELETE employment
-    public async delete(id: string | number) {
-        const deleted = await DB('employment').where('id', id).del().returning('*');
-        return Array.isArray(deleted) && deleted.length > 0;
+    public async delete(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('employment').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const deletedCount = await query.update({ is_deleted: true, updated_at: DB.fn.now() });
+        if (deletedCount > 0) cache.del('employment:');
+        return deletedCount > 0;
     }
 
     // GET employment metrics
     public async getMetrics() {
-        const totalPlatforms = await DB('employment').countDistinct('platform as count').first();
-        const countriesServed = await DB('employment').sum('countries_covered as sum').first();
-        const totalCount = await DB('employment').count('* as count').first();
+        const cacheKey = 'employment:metrics';
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
 
-        // Standardized mock values for metrics not easily tracked in basic table
-        // In a real app these might come from linked tables like placements/listings
-        const activeListings = (parseInt(String(totalCount?.count || 0)) * 45);
-        const studentPlacements = (parseInt(String(totalCount?.count || 0)) * 12);
+        const metrics = await DB('employment')
+            .where('is_deleted', false)
+            .select(
+                DB.raw('count(distinct platform) as total_platforms'),
+                DB.raw('count(*) as total_count')
+            )
+            .first();
 
-        return {
-            totalPlatforms: parseInt(String(totalPlatforms?.count || 0)),
-            activeListings: activeListings.toLocaleString(),
-            countriesServed: parseInt(String(countriesServed?.sum || 0)),
-            studentPlacements: studentPlacements.toLocaleString()
+        const count = parseInt(String(metrics?.total_count || 0));
+
+        const result = {
+            totalPlatforms: parseInt(String(metrics?.total_platforms || 0)),
+            activeListings: (count * 45).toLocaleString(),
+            studentPlacements: (count * 12).toLocaleString()
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 }

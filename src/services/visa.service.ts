@@ -1,5 +1,6 @@
 import DB from "@/database";
 import { Visa } from "@/interfaces/visa.interface";
+import cache from "@/utils/cache";
 
 export interface ExportResult {
     data: any;
@@ -17,21 +18,33 @@ export class VisaService {
         category?: string,
         student_visible?: boolean,
         sort: string = "created_at",
-        order: string = "desc"
+        order: string = "desc",
+        userRole?: string,
+        providerId?: string | number
     ) {
+        const cacheKey = cache.generateKey('visa:list', { page, limit, search, status, category, student_visible, sort, order, userRole, providerId });
+        const cachedData = cache.get<any>(cacheKey);
+        if (cachedData) return cachedData;
+
         const offset = (page - 1) * limit;
 
-        const countQuery = DB('visa').count('* as count');
-        const dataQuery = DB('visa').select('*');
+        const countQuery = DB('visa').where('is_deleted', false);
+        const dataQuery = DB('visa').where('is_deleted', false);
+
+        // RBAC: Provider only sees their own data
+        if (userRole === 'provider' && providerId) {
+            countQuery.andWhere('provider_id', providerId);
+            dataQuery.andWhere('provider_id', providerId);
+        }
 
         if (search) {
             const term = `%${search}%`;
-            countQuery.where(function () {
+            countQuery.andWhere(function () {
                 this.whereILike('visa_type', term)
                     .orWhereILike('category', term)
                     .orWhereILike('visa_id', term);
             });
-            dataQuery.where(function () {
+            dataQuery.andWhere(function () {
                 this.whereILike('visa_type', term)
                     .orWhereILike('category', term)
                     .orWhereILike('visa_id', term);
@@ -39,18 +52,18 @@ export class VisaService {
         }
 
         if (status && status !== 'All') {
-            countQuery.where('status', status.toLowerCase());
-            dataQuery.where('status', status.toLowerCase());
+            countQuery.andWhere('status', status.toLowerCase());
+            dataQuery.andWhere('status', status.toLowerCase());
         }
 
         if (category && category !== 'All Categories') {
-            countQuery.where('category', category);
-            dataQuery.where('category', category);
+            countQuery.andWhere('category', category);
+            dataQuery.andWhere('category', category);
         }
 
         if (student_visible !== undefined) {
-            countQuery.where('student_visible', student_visible);
-            dataQuery.where('student_visible', student_visible);
+            countQuery.andWhere('student_visible', student_visible);
+            dataQuery.andWhere('student_visible', student_visible);
         }
 
         const totalRes = await countQuery.first();
@@ -62,7 +75,7 @@ export class VisaService {
 
         const rows = await dataQuery.orderBy(finalSort, finalOrder).limit(limit).offset(offset);
 
-        return {
+        const result = {
             data: rows,
             pagination: {
                 total,
@@ -71,82 +84,104 @@ export class VisaService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
     // GET visa by ID
-    public async findById(id: string | number) {
-        const result = await DB('visa').where('id', id).first();
+    public async findById(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('visa').where('id', id).andWhere('is_deleted', false);
+        
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const result = await query.first();
         return result || null;
     }
 
     // CREATE visa
     public async create(visaData: any) {
-        const visa_id = visaData.visa_id || visaData.visaId || `VIS-${Date.now()}`;
-
         const payload = {
-            visa_id,
             visa_type: visaData.visa_type || visaData.visaType,
             category: visaData.category || 'Study',
-            countries_covered: visaData.countries_covered !== undefined ? visaData.countries_covered : (visaData.countriesCovered || 0),
             status: visaData.status || 'active',
-            student_visible: visaData.student_visible !== undefined ? visaData.student_visible : (visaData.studentVisible !== undefined ? visaData.studentVisible : true),
-            processing_difficulty: visaData.processing_difficulty || visaData.processingDifficulty || 'Medium',
-            work_rights: visaData.work_rights !== undefined ? visaData.work_rights : (visaData.workRights !== undefined ? visaData.workRights : true),
-            high_approval: visaData.high_approval !== undefined ? visaData.high_approval : (visaData.highApproval !== undefined ? visaData.highApproval : true),
-            popularity: visaData.popularity !== undefined ? visaData.popularity : (visaData.popularity || 0),
+            provider_id: visaData.provider_id,
         };
 
         const inserted = await DB('visa').insert(payload).returning('*');
+        cache.del('visa:');
         return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
     // UPDATE visa
-    public async update(id: string | number, visaData: any) {
+    public async update(id: string | number, visaData: any, userRole?: string, providerId?: string | number) {
+        let query = DB('visa').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const existing = await query.first();
+        if (!existing) return null;
+
         const payload: any = {
             updated_at: DB.fn.now(),
         };
 
         if (visaData.visa_type || visaData.visaType) payload.visa_type = visaData.visa_type || visaData.visaType;
         if (visaData.category) payload.category = visaData.category;
-        if (visaData.countries_covered !== undefined) payload.countries_covered = visaData.countries_covered;
-        if (visaData.countriesCovered !== undefined) payload.countries_covered = visaData.countriesCovered;
         if (visaData.status) payload.status = visaData.status;
-        if (visaData.student_visible !== undefined) payload.student_visible = visaData.student_visible;
-        if (visaData.studentVisible !== undefined) payload.student_visible = visaData.studentVisible;
-        if (visaData.processing_difficulty || visaData.processingDifficulty) payload.processing_difficulty = visaData.processing_difficulty || visaData.processingDifficulty;
-        if (visaData.work_rights !== undefined) payload.work_rights = visaData.work_rights;
-        if (visaData.workRights !== undefined) payload.work_rights = visaData.workRights;
-        if (visaData.high_approval !== undefined) payload.high_approval = visaData.high_approval;
-        if (visaData.highApproval !== undefined) payload.high_approval = visaData.highApproval;
-        if (visaData.popularity !== undefined) payload.popularity = visaData.popularity;
 
         const updated = await DB('visa').where('id', id).update(payload).returning('*');
+        if (updated) cache.del('visa:');
         return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
     }
 
-    // DELETE visa
-    public async delete(id: string | number) {
-        const deleted = await DB('visa').where('id', id).del().returning('*');
-        return Array.isArray(deleted) && deleted.length > 0;
+    // DELETE visa (Soft Delete)
+    public async delete(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('visa').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const deleted = await query.update({ is_deleted: true, updated_at: DB.fn.now() }).returning('*');
+        const isSuccess = Array.isArray(deleted) && deleted.length > 0;
+        if (isSuccess) cache.del('visa:');
+        return isSuccess;
     }
 
     // GET visa metrics
     public async getMetrics() {
-        const totalTypes = await DB('visa').count('* as count').first();
-        const activeTypes = await DB('visa').where('status', 'active').count('* as count').first();
-        const highApprovalPathways = await DB('visa').where('high_approval', true).count('* as count').first();
-        const countriesEnabled = await DB('visa').sum('countries_covered as total').first();
+        const cacheKey = 'visa:metrics';
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
 
-        return {
-            totalVisaTypes: parseInt((totalTypes as any).count || 0),
-            activeVisaRules: parseInt((activeTypes as any).count || 0),
-            highApprovalPathways: parseInt((highApprovalPathways as any).count || 0),
-            countriesEnabled: parseInt((countriesEnabled as any).total || 0),
+        const metrics = await DB('visa')
+            .where('is_deleted', false)
+            .select(
+                DB.raw('count(*) as total_types'),
+                DB.raw("count(*) FILTER (WHERE status = 'active') as active_types")
+            )
+            .first();
+        
+        const result = {
+            totalVisaTypes: parseInt(String(metrics?.total_types || 0)),
+            activeVisaRules: parseInt(String(metrics?.active_types || 0)),
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
-    public async exportVisas(options: any): Promise<ExportResult> {
-        let query = DB('visa');
+    public async exportVisas(options: any, userRole?: string, providerId?: string | number): Promise<ExportResult> {
+        let query = DB('visa').where('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
 
         // Handle Scope
         if (options.scope === 'selected' && options.ids) {

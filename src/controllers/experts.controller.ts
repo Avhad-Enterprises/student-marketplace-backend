@@ -64,4 +64,18 @@ export class ExpertController {
             next(error);
         }
     };
+
+    public importExperts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const data = req.body;
+            if (!Array.isArray(data)) {
+                res.status(400).json({ message: 'Input data must be an array' });
+                return;
+            }
+            const result = await this.expertService.importExperts(data);
+            res.status(200).json({ data: result, message: 'importExperts' });
+        } catch (error) {
+            next(error);
+        }
+    };
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Route from '../interfaces/routes.interface';
 import FileSettingsController from '@/controllers/fileSettings.controller';
 import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
 
 class FileSettingsRoute implements Route {
   public path = '/api/settings/files';
@@ -13,8 +14,9 @@ class FileSettingsRoute implements Route {
   }
 
   private initializeRoutes() {
-    this.router.get(`/`, authMiddleware, this.fileSettingsController.getSettings);
-    this.router.post(`/`, authMiddleware, this.fileSettingsController.updateSettings);
+    this.router.use(authMiddleware, roleMiddleware(['admin']));
+    this.router.get(`/`, this.fileSettingsController.getSettings);
+    this.router.post(`/`, this.fileSettingsController.updateSettings);
   }
 }
 

@@ -15,7 +15,11 @@ export class TaxesController {
             const sort = req.query.sort as string;
             const order = req.query.order as string;
 
-            const result = await this.taxesService.findAll(page, limit, search, status, student_visible, sort, order);
+            const user = (req as any).user;
+            const result = await this.taxesService.findAll(
+                page, limit, search, status, student_visible, sort, order,
+                user?.user_type, user?.id
+            );
 
             res.status(200).json({
                 success: true,
@@ -30,10 +34,11 @@ export class TaxesController {
     public getTaxById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const tax = await this.taxesService.findById(id);
+            const user = (req as any).user;
+            const tax = await this.taxesService.findById(id, user?.user_type, user?.id);
 
             if (!tax) {
-                res.status(404).json({ success: false, message: 'Tax service not found' });
+                res.status(404).json({ success: false, message: 'Tax service not found or unauthorized' });
                 return;
             }
 
@@ -46,6 +51,13 @@ export class TaxesController {
     public createTax = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const taxData = req.body;
+            const user = (req as any).user;
+
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                taxData.provider_id = user.id;
+            }
+
             const newTax = await this.taxesService.create(taxData);
             res.status(201).json({ success: true, data: newTax, message: 'Tax service created successfully' });
         } catch (error) {
@@ -57,10 +69,12 @@ export class TaxesController {
         try {
             const id = req.params.id;
             const taxData = req.body;
-            const updatedTax = await this.taxesService.update(id, taxData);
+            const user = (req as any).user;
+
+            const updatedTax = await this.taxesService.update(id, taxData, user?.user_type, user?.id);
 
             if (!updatedTax) {
-                res.status(404).json({ success: false, message: 'Tax service not found or update failed' });
+                res.status(404).json({ success: false, message: 'Tax service not found or unauthorized' });
                 return;
             }
 
@@ -73,10 +87,11 @@ export class TaxesController {
     public deleteTax = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const result = await this.taxesService.delete(id);
+            const user = (req as any).user;
+            const result = await this.taxesService.delete(id, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Tax service not found or deletion failed' });
+                res.status(404).json({ success: false, message: 'Tax service not found or unauthorized' });
                 return;
             }
 
@@ -98,7 +113,8 @@ export class TaxesController {
     public exportTaxes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             logger.info(`[TaxesController.exportTaxes] Processing export request with query: ${JSON.stringify(req.query)}`);
-            const { data, mimeType, extension }: ExportResult = await this.taxesService.exportTaxes(req.query);
+            const user = (req as any).user;
+            const { data, mimeType, extension }: ExportResult = await this.taxesService.exportTaxes(req.query, user?.user_type, user?.id);
             res.setHeader('Content-Type', mimeType);
             res.setHeader('Content-Disposition', `attachment; filename=taxes-export-${Date.now()}.${extension}`);
             res.status(200).send(data);

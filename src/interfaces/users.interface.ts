@@ -3,6 +3,9 @@ export interface User {
     email: string;
     password_hash: string;
     full_name: string;
+    first_name?: string;
+    last_name?: string;
+    role_id?: number | string;
     user_type: string;
     account_status: string;
     email_verified: boolean;

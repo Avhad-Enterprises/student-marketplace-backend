@@ -38,10 +38,23 @@ export class StudentController {
   // GET /api/students/:id
   public getStudentById = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = (req as any).user;
       const student = await this.studentService.findById(req.params.id);
+      
       if (!student) {
         return res.status(404).json({ error: "Student not found" });
       }
+
+      // Ownership Validation: Admin bypass OR student_code match (case-insensitive)
+      const isOwner = user?.student_code && student.student_id && 
+                      user.student_code.toLowerCase() === student.student_id.toLowerCase();
+      
+      const isAdmin = user?.user_type === 'admin' || user?.role === 'admin';
+
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ error: "Forbidden: You do not have permission to access this student profile" });
+      }
+
       res.json(student);
     } catch (err) {
       next(err);
@@ -101,11 +114,41 @@ export class StudentController {
   // GET /api/students/:id/profile-completion
   public getProfileCompletion = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = (req as any).user;
       const result = await this.studentService.getProfileCompletion(req.params.id);
+      
       if (!result) {
         return res.status(404).json({ error: "Student not found" });
       }
+
+      // We need the student record to check the student_id for ownership
+      const student = await this.studentService.findById(req.params.id);
+      
+      // Ownership Validation: Admin bypass OR student_code match (case-insensitive)
+      const isOwner = user?.student_code && student?.student_id && 
+                      user.student_code.toLowerCase() === student.student_id.toLowerCase();
+
+      const isAdmin = user?.user_type === 'admin' || user?.role === 'admin';
+
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ error: "Forbidden: You do not have permission to access this profile completion status" });
+      }
+
       res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public importStudents = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = req.body;
+      if (!Array.isArray(data)) {
+        res.status(400).json({ message: 'Input data must be an array' });
+        return;
+      }
+      const result = await this.studentService.importStudents(data);
+      res.status(200).json({ data: result, message: 'importStudents' });
     } catch (err) {
       next(err);
     }

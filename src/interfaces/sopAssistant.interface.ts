@@ -1,5 +1,6 @@
 export interface SOP {
     id?: number;
+    student_id: string;
     student_name: string;
     country: string;
     university: string;

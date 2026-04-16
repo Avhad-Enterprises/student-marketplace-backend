@@ -6,7 +6,8 @@ const reportService = new ReportService(db);
 
 export const runReport = async (req: Request, res: Response) => {
     try {
-        const result = await reportService.runReport(req.body);
+        const eventId = req.query.eventId ? Number(req.query.eventId) : (req.body.eventId ? Number(req.body.eventId) : undefined);
+        const result = await reportService.runReport(req.body, eventId);
 
         if (!result.success) {
             return res.status(400).json(result);
@@ -23,7 +24,8 @@ export const runReport = async (req: Request, res: Response) => {
 
 export const saveReport = async (req: Request, res: Response) => {
     try {
-        const result = await reportService.saveReport(req.body);
+        const eventId = req.query.eventId ? Number(req.query.eventId) : (req.body.eventId ? Number(req.body.eventId) : undefined);
+        const result = await reportService.saveReport({ ...req.body, event_id: eventId });
 
         if (!result.success) {
             return res.status(400).json(result);
@@ -38,9 +40,10 @@ export const saveReport = async (req: Request, res: Response) => {
     }
 };
 
-export const getReports = async (_req: Request, res: Response) => {
+export const getReports = async (req: Request, res: Response) => {
     try {
-        const result = await reportService.getReports();
+        const eventId = req.query.eventId ? Number(req.query.eventId) : undefined;
+        const result = await reportService.getReports(eventId);
 
         return res.json(result);
     } catch (error: any) {
@@ -54,7 +57,8 @@ export const getReports = async (_req: Request, res: Response) => {
 export const exportReport = async (req: Request, res: Response) => {
     try {
         const { format, ...config } = req.body;
-        const result = await reportService.exportReport(config, format);
+        const eventId = req.query.eventId ? Number(req.query.eventId) : (req.body.eventId ? Number(req.body.eventId) : undefined);
+        const result = await reportService.exportReport(config, format, eventId);
 
         res.setHeader('Content-Type', result.mimeType);
         res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
@@ -71,8 +75,9 @@ export const exportReport = async (req: Request, res: Response) => {
 export const getReportById = async (req: Request, res: Response) => {
     try {
         const id = Number(req.params.id);
+        const eventId = req.query.eventId ? Number(req.query.eventId) : (req.body.eventId ? Number(req.body.eventId) : undefined);
 
-        const result = await reportService.getReportById(id);
+        const result = await reportService.getReportById(id, eventId);
 
         if (!result.success) {
             if (result.message === "Report not found") {
@@ -93,7 +98,8 @@ export const getReportById = async (req: Request, res: Response) => {
 export const updateReport = async (req: Request, res: Response) => {
     try {
         const id = Number(req.params.id);
-        const result = await reportService.updateReport(id, req.body);
+        const eventId = req.query.eventId ? Number(req.query.eventId) : (req.body.eventId ? Number(req.body.eventId) : undefined);
+        const result = await reportService.updateReport(id, { ...req.body, event_id: eventId });
 
         if (!result.success) {
             return res.status(400).json(result);

@@ -2,6 +2,9 @@ import { Router } from 'express';
 import GeneralSettingsController from '@/controllers/generalSettings.controller';
 import Routes from '@/interfaces/routes.interface';
 
+import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
+
 class GeneralSettingsRoute implements Routes {
   public path = '/settings/general';
   public router = Router();
@@ -12,6 +15,7 @@ class GeneralSettingsRoute implements Routes {
   }
 
   private initializeRoutes() {
+    this.router.use(authMiddleware, roleMiddleware(['admin']));
     this.router.get(`${this.path}`, this.generalSettingsController.getAll);
     this.router.get(`${this.path}/:key`, this.generalSettingsController.getByKey);
     this.router.post(`${this.path}`, this.generalSettingsController.upsert);

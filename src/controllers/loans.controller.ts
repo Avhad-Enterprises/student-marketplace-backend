@@ -8,6 +8,7 @@ export class LoansController {
     public getAllLoans = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { page, limit, search, status, student_visible, sort, order } = req.query;
+            const user = (req as any).user;
             const result = await this.loansService.findAll(
                 Number(page) || 1,
                 Number(limit) || 10,
@@ -15,7 +16,9 @@ export class LoansController {
                 status as string,
                 student_visible === 'true' ? true : student_visible === 'false' ? false : undefined,
                 sort as string,
-                order as string
+                order as string,
+                user?.user_type,
+                user?.id
             );
 
             res.status(200).json({ data: result.data, pagination: result.pagination, message: 'findAll' });
@@ -27,7 +30,13 @@ export class LoansController {
     public getLoanById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const loanId = req.params.id;
-            const findLoanData = await this.loansService.findById(loanId);
+            const user = (req as any).user;
+            const findLoanData = await this.loansService.findById(loanId, user?.user_type, user?.id);
+
+            if (!findLoanData) {
+                res.status(404).json({ success: false, message: 'Loan product not found or unauthorized' });
+                return;
+            }
 
             res.status(200).json({ data: findLoanData, message: 'findOne' });
         } catch (error) {
@@ -38,8 +47,14 @@ export class LoansController {
     public createLoan = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const loanData = req.body;
-            const createLoanData = await this.loansService.create(loanData);
+            const user = (req as any).user;
 
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                loanData.provider_id = user.id;
+            }
+
+            const createLoanData = await this.loansService.create(loanData);
             res.status(201).json({ data: createLoanData, message: 'created' });
         } catch (error) {
             next(error);
@@ -50,7 +65,14 @@ export class LoansController {
         try {
             const loanId = req.params.id;
             const loanData = req.body;
-            const updateLoanData = await this.loansService.update(loanId, loanData);
+            const user = (req as any).user;
+
+            const updateLoanData = await this.loansService.update(loanId, loanData, user?.user_type, user?.id);
+
+            if (!updateLoanData) {
+                res.status(404).json({ success: false, message: 'Loan product not found or unauthorized' });
+                return;
+            }
 
             res.status(200).json({ data: updateLoanData, message: 'updated' });
         } catch (error) {
@@ -61,7 +83,13 @@ export class LoansController {
     public deleteLoan = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const loanId = req.params.id;
-            await this.loansService.delete(loanId);
+            const user = (req as any).user;
+            const result = await this.loansService.delete(loanId, user?.user_type, user?.id);
+
+            if (!result) {
+                res.status(404).json({ success: false, message: 'Loan product not found or unauthorized' });
+                return;
+            }
 
             res.status(200).json({ message: 'deleted' });
         } catch (error) {
@@ -81,7 +109,8 @@ export class LoansController {
     public exportLoans = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const options = req.query;
-            const exportResult = await this.loansService.exportLoans(options);
+            const user = (req as any).user;
+            const exportResult = await this.loansService.exportLoans(options, user?.user_type, user?.id);
 
             res.setHeader('Content-Type', exportResult.mimeType);
             res.setHeader('Content-Disposition', `attachment; filename=loans-export.${exportResult.extension}`);

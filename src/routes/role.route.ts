@@ -2,6 +2,7 @@ import { Router } from 'express';
 import RoleController from '../controllers/role.controller';
 import Route from '../interfaces/routes.interface';
 import authMiddleware from '../middlewares/auth.middleware';
+import roleMiddleware from '../middlewares/role.middleware';
 
 class RoleRoute implements Route {
     public path = '/api/roles';
@@ -13,11 +14,12 @@ class RoleRoute implements Route {
     }
 
     private initializeRoutes() {
-        this.router.get('/', authMiddleware, this.roleController.getRoles);
-        this.router.get('/:id', authMiddleware, this.roleController.getRoleById);
-        this.router.post('/', authMiddleware, this.roleController.createRole);
-        this.router.put('/:id', authMiddleware, this.roleController.updateRole);
-        this.router.delete('/:id', authMiddleware, this.roleController.deleteRole);
+        this.router.use(authMiddleware, roleMiddleware(['admin']));
+        this.router.get('/', this.roleController.getRoles);
+        this.router.get('/:id', this.roleController.getRoleById);
+        this.router.post('/', this.roleController.createRole);
+        this.router.put('/:id', this.roleController.updateRole);
+        this.router.delete('/:id', this.roleController.deleteRole);
     }
 }
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Route from '../interfaces/routes.interface';
 import IntegrationSettingsController from '@/controllers/integrationSettings.controller';
 import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
 
 class IntegrationSettingsRoute implements Route {
   public path = '/api/settings/integrations';
@@ -13,8 +14,9 @@ class IntegrationSettingsRoute implements Route {
   }
 
   private initializeRoutes() {
-    this.router.get(`/`, authMiddleware, this.integrationSettingsController.getSettings);
-    this.router.post(`/`, authMiddleware, this.integrationSettingsController.updateSettings);
+    this.router.use(authMiddleware, roleMiddleware(['admin']));
+    this.router.get(`/`, this.integrationSettingsController.getSettings);
+    this.router.post(`/`, this.integrationSettingsController.updateSettings);
   }
 }
 

@@ -2,6 +2,9 @@ import { Router } from 'express';
 import SystemSettingsController from '@/controllers/systemSettings.controller';
 import Routes from '@/interfaces/routes.interface';
 
+import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
+
 class SystemSettingsRoute implements Routes {
     public path = '/api/settings';
     public router = Router();
@@ -12,6 +15,7 @@ class SystemSettingsRoute implements Routes {
     }
 
     private initializeRoutes() {
+        this.router.use(authMiddleware, roleMiddleware(['admin']));
         this.router.get(`/system`, this.systemSettingsController.getSystemSettings);
         this.router.post(`/system`, this.systemSettingsController.updateSystemSettings);
         this.router.get(`/notifications`, this.systemSettingsController.getNotificationSettings);

@@ -7,7 +7,20 @@ export class StudentServicesController {
   // GET all services for a student
   public getServicesByStudentId = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const services = await this.studentServicesService.findByStudentId(req.params.studentDbId);
+      const user = (req as any).user;
+      const isAdmin = user?.user_type === 'admin' || user?.role === 'admin';
+      const studentDbId = req.params.studentDbId;
+      const services: any[] = await this.studentServicesService.findByStudentId(studentDbId);
+
+      if (services.length > 0) {
+          // Ownership Validation
+          const isOwner = user?.student_code && services[0].student_id && 
+                          user.student_code.toLowerCase() === services[0].student_id.toLowerCase();
+          if (!isAdmin && !isOwner) {
+              return res.status(403).json({ error: "Forbidden: Access denied" });
+          }
+      }
+
       res.json(services);
     } catch (err) {
       next(err);

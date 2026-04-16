@@ -1,0 +1,18 @@
+[
+  {
+    "id": "f9cfd5ca-8341-4b27-9a8a-d42d787b23c1",
+    "name": "Manager"
+  },
+  {
+    "id": "2f0ae635-758b-4fc3-8b1f-a7ffeec94133",
+    "name": "Expert"
+  },
+  {
+    "id": "49f4a9da-1be9-4c3e-97fc-3b1ceda79658",
+    "name": "Finance1"
+  },
+  {
+    "id": "e569b8f1-966d-4116-96fc-f535a98d56d2",
+    "name": "Super Admin"
+  }
+]

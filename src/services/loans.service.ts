@@ -1,6 +1,7 @@
 import DB from "@/database";
 import { Loan } from "@/interfaces/loans.interface";
 import { logger } from "@/utils/logger";
+import cache from "@/utils/cache";
 
 export interface ExportResult {
     data: any;
@@ -16,93 +17,165 @@ export class LoansService {
         status?: string,
         student_visible?: boolean,
         sort: string = 'created_at',
-        order: string = 'desc'
+        order: string = 'desc',
+        userRole?: string,
+        providerId?: string | number
     ) {
-        let query = DB('loans');
+        const cacheKey = cache.generateKey('loans:list', { page, limit, search, status, student_visible, sort, order, userRole, providerId });
+        const cachedData = cache.get<any>(cacheKey);
+        if (cachedData) return cachedData;
+
+        const offset = (page - 1) * limit;
+
+        const countQuery = DB('loans').where('is_deleted', false);
+        const dataQuery = DB('loans').where('is_deleted', false);
+
+        // RBAC: Provider only sees their own data
+        if (userRole === 'provider' && providerId) {
+            countQuery.andWhere('provider_id', providerId);
+            dataQuery.andWhere('provider_id', providerId);
+        }
 
         if (search) {
-            query = query.where((builder) => {
-                builder.where('provider_name', 'ILIKE', `%${search}%`)
-                    .orWhere('product_name', 'ILIKE', `%${search}%`)
-                    .orWhere('loan_id', 'ILIKE', `%${search}%`);
+            const term = `%${search}%`;
+            countQuery.andWhere(function () {
+                this.whereILike('provider_name', term)
+                    .orWhereILike('product_name', term);
+            });
+            dataQuery.andWhere(function () {
+                this.whereILike('provider_name', term)
+                    .orWhereILike('product_name', term);
             });
         }
 
         if (status && status !== 'All') {
-            query = query.where('status', status.toLowerCase());
+            countQuery.andWhere('status', status.toLowerCase());
+            dataQuery.andWhere('status', status.toLowerCase());
         }
 
         if (student_visible !== undefined) {
-            query = query.where('student_visible', student_visible);
+            countQuery.andWhere('student_visible', student_visible);
+            dataQuery.andWhere('student_visible', student_visible);
         }
 
-        const total = await query.clone().count('* as count').first();
-        const count = parseInt(total?.count as string) || 0;
+        const totalRes = await countQuery.first();
+        const total = parseInt((totalRes && (totalRes as any).count) || '0');
 
-        const data = await query
-            .orderBy(sort, order)
-            .limit(limit)
-            .offset((page - 1) * limit);
+        const validSortFields = ['provider_name', 'product_name', 'status', 'created_at', 'updated_at', 'interest_rate', 'max_amount'];
+        const finalSort = validSortFields.includes(sort) ? sort : 'created_at';
+        const finalOrder = order?.toLowerCase() === 'asc' ? 'asc' : 'desc';
 
-        return {
-            data,
+        const rows = await dataQuery.orderBy(finalSort, finalOrder).limit(limit).offset(offset);
+
+        const result = {
+            data: rows,
             pagination: {
-                total: count,
+                total,
                 page,
                 limit,
-                totalPages: Math.ceil(count / limit)
+                totalPages: Math.ceil(total / limit)
             }
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
-    public async findById(id: string | number): Promise<Loan> {
-        return await DB('loans').where('id', id).orWhere('loan_id', id).first();
+    public async findById(id: string | number, userRole?: string, providerId?: string | number): Promise<Loan> {
+        let query = DB('loans').where('id', id).andWhere('is_deleted', false);
+        
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const result = await query.first();
+        return result || null;
     }
 
-    public async create(loanData: Partial<Loan>): Promise<Loan> {
-        const loanCount = await DB('loans').count('* as count').first();
-        const count = parseInt(loanCount?.count as string) || 0;
-        const loanId = `LON-${7801 + count}`;
+    public async create(loanData: any): Promise<Loan> {
+        const payload = {
+            provider_name: loanData.provider_name || loanData.providerName,
+            product_name: loanData.product_name || loanData.productName,
+            loan_type: loanData.loan_type || loanData.loanType,
+            interest_rate: loanData.interest_rate || loanData.interestRate,
+            max_amount: loanData.max_amount || loanData.maxAmount,
+            status: loanData.status || 'active',
+            provider_id: loanData.provider_id,
+        };
 
-        const [newLoan] = await DB('loans').insert({
-            ...loanData,
-            loan_id: loanId
-        }).returning('*');
-
-        return newLoan;
+        const inserted = await DB('loans').insert(payload).returning('*');
+        cache.del('loans:');
+        return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
-    public async update(id: string | number, loanData: Partial<Loan>): Promise<Loan> {
-        const [updatedLoan] = await DB('loans')
-            .where('id', id)
-            .update({
-                ...loanData,
-                updated_at: DB.fn.now()
-            })
-            .returning('*');
+    public async update(id: string | number, loanData: any, userRole?: string, providerId?: string | number): Promise<Loan | null> {
+        let query = DB('loans').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const existing = await query.first();
+        if (!existing) return null;
+
+        const payload: any = {
+            updated_at: DB.fn.now()
+        };
+
+        if (loanData.provider_name || loanData.providerName) payload.provider_name = loanData.provider_name || loanData.providerName;
+        if (loanData.product_name || loanData.productName) payload.product_name = loanData.product_name || loanData.productName;
+        if (loanData.loan_type || loanData.loanType) payload.loan_type = loanData.loan_type || loanData.loanType;
+        if (loanData.interest_rate !== undefined || loanData.interestRate !== undefined) 
+            payload.interest_rate = loanData.interest_rate || loanData.interestRate;
+        if (loanData.max_amount !== undefined || loanData.maxAmount !== undefined) 
+            payload.max_amount = loanData.max_amount || loanData.maxAmount;
+        if (loanData.status) payload.status = loanData.status;
+
+        const [updatedLoan] = await DB('loans').where('id', id).update(payload).returning('*');
+        if (updatedLoan) cache.del('loans:');
         return updatedLoan;
     }
 
-    public async delete(id: string | number): Promise<boolean> {
-        const deletedCount = await DB('loans').where('id', id).delete();
+    public async delete(id: string | number, userRole?: string, providerId?: string | number): Promise<boolean> {
+        let query = DB('loans').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const deletedCount = await query.update({ is_deleted: true, updated_at: DB.fn.now() });
+        if (deletedCount > 0) cache.del('loans:');
         return deletedCount > 0;
     }
 
     public async getMetrics() {
-        const totalLoans = await DB('loans').count('* as count').first();
-        const activeLoans = await DB('loans').where('status', 'active').count('* as count').first();
-        const countriesSupported = await DB('loans').sum('countries_supported as sum').first();
+        const cacheKey = 'loans:metrics';
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
 
-        return {
-            totalLoanProviders: parseInt(totalLoans?.count as string) || 0,
-            activeLoanProducts: parseInt(activeLoans?.count as string) || 0,
-            countriesSupported: parseInt(countriesSupported?.sum as string) || 0,
-            averageApprovalRate: '76%' // Mocked for now to match UI
+        const metrics = await DB('loans')
+            .where('is_deleted', false)
+            .select(
+                DB.raw('count(*) as total_loans'),
+                DB.raw("count(*) FILTER (WHERE status = 'active') as active_loans")
+            )
+            .first();
+
+        const result = {
+            totalLoanProviders: parseInt(String(metrics?.total_loans || 0)),
+            activeLoanProducts: parseInt(String(metrics?.active_loans || 0)),
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
-    public async exportLoans(options: any): Promise<ExportResult> {
-        let query = DB('loans');
+    public async exportLoans(options: any, userRole?: string, providerId?: string | number): Promise<ExportResult> {
+        let query = DB('loans').where('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
 
         if (options.scope === 'selected' && options.ids) {
             const idsArray = options.ids.split(',').map(Number);

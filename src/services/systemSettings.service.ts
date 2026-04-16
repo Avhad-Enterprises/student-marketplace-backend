@@ -27,7 +27,8 @@ class SystemSettingsService {
             try { settings.feature_flags = JSON.parse(settings.feature_flags); } catch (e) { settings.feature_flags = {}; }
         }
 
-        return settings;
+        const { stripe_secret_key, aws_secret_key, smtp_pass, ...safeSettings } = settings;
+        return safeSettings;
     }
 
     public async updateSystemSettings(settingsData: Partial<SystemSettings>): Promise<SystemSettings> {

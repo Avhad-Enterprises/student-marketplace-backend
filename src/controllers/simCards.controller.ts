@@ -15,7 +15,11 @@ export class SimCardController {
             const sort = req.query.sort as string;
             const order = req.query.order as string;
 
-            const result = await this.simCardService.findAll(page, limit, search, status, network_type, student_visible, sort, order);
+            const user = (req as any).user;
+            const result = await this.simCardService.findAll(
+                page, limit, search, status, network_type, student_visible, sort, order, 
+                user?.user_type, user?.id
+            );
 
             res.status(200).json({ data: result.data, pagination: result.pagination, message: "findAll" });
         } catch (error) {
@@ -26,7 +30,8 @@ export class SimCardController {
     public getSimCardById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const simCardId = req.params.id;
-            const findSimCardData = await this.simCardService.findById(simCardId);
+            const user = (req as any).user;
+            const findSimCardData = await this.simCardService.findById(simCardId, user?.user_type, user?.id);
 
             res.status(200).json({ data: findSimCardData, message: "findOne" });
         } catch (error) {
@@ -37,6 +42,13 @@ export class SimCardController {
     public createSimCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const simCardData = req.body;
+            const user = (req as any).user;
+            
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                simCardData.provider_id = user.id;
+            }
+
             const createSimCardData = await this.simCardService.create(simCardData);
 
             res.status(201).json({ data: createSimCardData, message: "created" });
@@ -49,7 +61,14 @@ export class SimCardController {
         try {
             const simCardId = req.params.id;
             const simCardData = req.body;
-            const updateSimCardData = await this.simCardService.update(simCardId, simCardData);
+            const user = (req as any).user;
+            
+            const updateSimCardData = await this.simCardService.update(simCardId, simCardData, user?.user_type, user?.id);
+
+            if (!updateSimCardData) {
+                res.status(404).json({ message: "SIM Card not found or unauthorized" });
+                return;
+            }
 
             res.status(200).json({ data: updateSimCardData, message: "updated" });
         } catch (error) {
@@ -60,7 +79,13 @@ export class SimCardController {
     public deleteSimCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const simCardId = req.params.id;
-            const deleteSimCardData = await this.simCardService.delete(simCardId);
+            const user = (req as any).user;
+            const deleteSimCardData = await this.simCardService.delete(simCardId, user?.user_type, user?.id);
+
+            if (!deleteSimCardData) {
+                res.status(404).json({ message: "SIM Card not found or unauthorized" });
+                return;
+            }
 
             res.status(200).json({ data: deleteSimCardData, message: "deleted" });
         } catch (error) {

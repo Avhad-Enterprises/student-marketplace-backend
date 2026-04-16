@@ -15,7 +15,8 @@ export class ForexController {
             const sort = req.query.sort as string;
             const order = req.query.order as string;
 
-            const result = await this.forexService.findAll(page, limit, search, status, service_type, student_visible, sort, order);
+            const user = (req as any).user;
+            const result = await this.forexService.findAll(page, limit, search, status, service_type, student_visible, sort, order, user?.user_type, user?.id);
 
             res.status(200).json({ success: true, ...result });
         } catch (error) {
@@ -26,10 +27,11 @@ export class ForexController {
     public getForexById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const result = await this.forexService.findById(id);
+            const user = (req as any).user;
+            const result = await this.forexService.findById(id, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Forex provider not found' });
+                res.status(404).json({ success: false, message: 'Forex provider not found or unauthorized' });
                 return;
             }
 
@@ -42,8 +44,14 @@ export class ForexController {
     public createForex = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const forexData = req.body;
-            const result = await this.forexService.create(forexData);
+            const user = (req as any).user;
 
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                forexData.provider_id = user.id;
+            }
+
+            const result = await this.forexService.create(forexData);
             res.status(201).json({ success: true, data: result });
         } catch (error) {
             next(error);
@@ -54,10 +62,12 @@ export class ForexController {
         try {
             const id = req.params.id;
             const forexData = req.body;
-            const result = await this.forexService.update(id, forexData);
+            const user = (req as any).user;
+
+            const result = await this.forexService.update(id, forexData, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Forex provider not found' });
+                res.status(404).json({ success: false, message: 'Forex provider not found or unauthorized' });
                 return;
             }
 
@@ -70,10 +80,11 @@ export class ForexController {
     public deleteForex = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const result = await this.forexService.delete(id);
+            const user = (req as any).user;
+            const result = await this.forexService.delete(id, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Forex provider not found' });
+                res.status(404).json({ success: false, message: 'Forex provider not found or unauthorized' });
                 return;
             }
 

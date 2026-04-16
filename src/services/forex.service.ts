@@ -1,5 +1,6 @@
 import DB from "@/database";
 import { Forex } from "@/interfaces/forex.interface";
+import cache from "@/utils/cache";
 
 export class ForexService {
     // GET all forex with pagination and search
@@ -11,12 +12,24 @@ export class ForexService {
         service_type?: string,
         student_visible?: boolean,
         sort: string = "created_at",
-        order: string = "desc"
+        order: string = "desc",
+        userRole?: string,
+        providerId?: string | number
     ) {
+        const cacheKey = cache.generateKey('forex:list', { page, limit, search, status, service_type, student_visible, sort, order, userRole, providerId });
+        const cachedData = cache.get<any>(cacheKey);
+        if (cachedData) return cachedData;
+
         const offset = (page - 1) * limit;
 
-        const countQuery = DB('forex').count('* as count');
-        const dataQuery = DB('forex').select('*');
+        const countQuery = DB('forex').where('is_deleted', false);
+        const dataQuery = DB('forex').where('is_deleted', false);
+
+        // RBAC: Provider only sees their own data
+        if (userRole === 'provider' && providerId) {
+            countQuery.andWhere('provider_id', providerId);
+            dataQuery.andWhere('provider_id', providerId);
+        }
 
         if (search) {
             const term = `%${search}%`;
@@ -62,7 +75,7 @@ export class ForexService {
 
         const rows = await dataQuery.limit(limit).offset(offset);
 
-        return {
+        const result = {
             data: rows,
             pagination: {
                 total,
@@ -71,11 +84,20 @@ export class ForexService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
     // GET forex by ID
-    public async findById(id: string | number) {
-        const result = await DB('forex').where('id', id).first();
+    public async findById(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('forex').where('id', id).andWhere('is_deleted', false);
+        
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const result = await query.first();
         return result || null;
     }
 
@@ -97,11 +119,21 @@ export class ForexService {
         };
 
         const inserted = await DB('forex').insert(payload).returning('*');
+        cache.del('forex:');
         return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
     // UPDATE forex
-    public async update(id: string | number, forexData: any) {
+    public async update(id: string | number, forexData: any, userRole?: string, providerId?: string | number) {
+        let query = DB('forex').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const existing = await query.first();
+        if (!existing) return null;
+
         const payload: any = {
             updated_at: DB.fn.now(),
         };
@@ -120,30 +152,50 @@ export class ForexService {
         if (forexData.popularity !== undefined) payload.popularity = forexData.popularity;
 
         const updated = await DB('forex').where('id', id).update(payload).returning('*');
+        if (updated) cache.del('forex:');
         return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
     }
 
     // DELETE forex
-    public async delete(id: string | number) {
-        const deleted = await DB('forex').where('id', id).del().returning('*');
-        return Array.isArray(deleted) && deleted.length > 0;
+    public async delete(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('forex').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const deletedCount = await query.update({ is_deleted: true, updated_at: DB.fn.now() });
+        if (deletedCount > 0) cache.del('forex:');
+        return deletedCount > 0;
     }
 
     // GET forex metrics
     public async getMetrics() {
-        const totalPartners = await DB('forex').countDistinct('provider_name as count').first();
-        const totalCurrencyPairs = await DB('forex').sum('currency_pairs as sum').first();
-        const avgFeeResult = await DB('forex').select(DB.raw("AVG(CAST(NULLIF(regexp_replace(avg_fee, '[^0-9.]', '', 'g'), '') AS NUMERIC)) as avg")).first();
-        const instantTransfers = await DB('forex').whereILike('transfer_speed', '%instant%').orWhereILike('transfer_speed', '%same day%').count('* as count').first();
-        const totalCount = await DB('forex').count('* as count').first();
+        const cacheKey = 'forex:metrics';
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
 
-        const total = parseInt(String(totalCount?.count || 0));
+        const metrics = await DB('forex')
+            .where('is_deleted', false)
+            .select(
+                DB.raw('count(distinct provider_name) as total_partners'),
+                DB.raw('sum(currency_pairs) as total_currency_pairs'),
+                DB.raw("AVG(CAST(NULLIF(regexp_replace(avg_fee, '[^0-9.]', '', 'g'), '') AS NUMERIC)) as avg_fee"),
+                DB.raw("count(*) FILTER (WHERE transfer_speed ILIKE '%instant%' OR transfer_speed ILIKE '%same day%') as instant_transfers"),
+                DB.raw('count(*) as total_count')
+            )
+            .first();
 
-        return {
-            totalPartners: parseInt(String(totalPartners?.count || 0)),
-            totalCurrencyPairs: parseInt(String(totalCurrencyPairs?.sum || 0)),
-            avgFee: parseFloat(String((avgFeeResult as any)?.avg || 0)).toFixed(1) + '%',
-            instantPercentage: total > 0 ? Math.round((parseInt(String(instantTransfers?.count || 0)) / total) * 100) + '%' : '0%',
+        const total = parseInt(String(metrics?.total_count || 0));
+
+        const result = {
+            totalPartners: parseInt(String(metrics?.total_partners || 0)),
+            totalCurrencyPairs: parseInt(String(metrics?.total_currency_pairs || 0)),
+            avgFee: parseFloat(String(metrics?.avg_fee || 0)).toFixed(1) + '%',
+            instantPercentage: total > 0 ? Math.round((parseInt(String(metrics?.instant_transfers || 0)) / total) * 100) + '%' : '0%',
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 }

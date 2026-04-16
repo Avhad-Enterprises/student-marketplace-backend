@@ -72,4 +72,54 @@ export class ExpertService {
         const deletedCount = await DB('experts').where('id', id).orWhere('expert_id', id).delete();
         return deletedCount > 0;
     }
+
+    public async importExperts(data: any[]): Promise<{ success: number; failed: number; errors: string[] }> {
+        let success = 0;
+        let failed = 0;
+        const errors: string[] = [];
+
+        await DB.transaction(async (trx) => {
+            for (const item of data) {
+                try {
+                    const expertId = item.expert_id || item.expertId;
+                    const email = item.email;
+                    
+                    if (!email && !expertId) throw new Error('Missing email or expert_id for identification');
+
+                    const payload: any = {
+                        full_name: item.full_name || item.name || 'New Expert',
+                        email: email,
+                        phone: item.phone || '',
+                        specialization: item.specialization || 'General',
+                        status: (item.status || 'available').toLowerCase(),
+                        max_capacity: item.max_capacity || item.maxCapacity || 30,
+                        assigned_students: item.assigned_students || item.assignedStudents || 0,
+                        rating: item.rating || 5.0,
+                        updated_at: new Date()
+                    };
+
+                    let existing = null;
+                    if (expertId) {
+                        existing = await trx('experts').where({ expert_id: expertId }).first();
+                    } else if (email) {
+                        existing = await trx('experts').where({ email }).first();
+                    }
+
+                    if (existing) {
+                        await trx('experts').where({ id: existing.id }).update(payload);
+                    } else {
+                        payload.expert_id = expertId || `EXP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                        payload.created_at = new Date();
+                        await trx('experts').insert(payload);
+                    }
+                    success++;
+                } catch (error: any) {
+                    failed++;
+                    errors.push(`Row ${success + failed}: ${error.message}`);
+                }
+            }
+        });
+
+        return { success, failed, errors };
+    }
 }

@@ -593,4 +593,56 @@ export class StudentService {
       totalFields: fields.length,
     };
   }
+
+  public async importStudents(data: any[]): Promise<{ success: number; failed: number; errors: string[] }> {
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    await DB.transaction(async (trx) => {
+      for (const item of data) {
+        try {
+          const email = item.email;
+          const studentId = item.student_id || item.studentId;
+          
+          if (!email && !studentId) throw new Error('Missing email or student_id for identification');
+
+          const payload: any = {
+            first_name: item.first_name || item.firstName || 'New',
+            last_name: item.last_name || item.lastName || 'Student',
+            email: email,
+            current_stage: (item.stage || item.current_stage || item.currentStage || 'new').toLowerCase(),
+            risk_level: (item.risk_level || item.riskLevel || 'low').toLowerCase(),
+            nationality: item.nationality || item.country || '',
+            current_country: item.current_country || item.currentCountry || item.country || '',
+            assigned_counselor: item.assigned_counselor || item.assignedCounselor || item.counselor || '',
+            updated_at: new Date()
+          };
+
+          // Try to find by student_id first, then email
+          let existing = null;
+          if (studentId) {
+            existing = await trx('students').where({ student_id: studentId }).first();
+          } else if (email) {
+            existing = await trx('students').where({ email }).first();
+          }
+
+          if (existing) {
+            await trx('students').where({ id: existing.id }).update(payload);
+          } else {
+            payload.student_id = studentId || `STU-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            payload.created_at = new Date();
+            payload.account_status = true;
+            await trx('students').insert(payload);
+          }
+          success++;
+        } catch (error: any) {
+          failed++;
+          errors.push(`Row ${success + failed}: ${error.message}`);
+        }
+      }
+    });
+
+    return { success, failed, errors };
+  }
 }

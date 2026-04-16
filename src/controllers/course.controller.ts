@@ -15,7 +15,8 @@ export class CourseController {
             const sort = req.query.sort as string;
             const order = req.query.order as string;
 
-            const result = await this.courseService.findAll(page, limit, search, status, category, student_visible, sort, order);
+            const user = (req as any).user;
+            const result = await this.courseService.findAll(page, limit, search, status, category, student_visible, sort, order, user?.user_type, user?.id);
 
             res.status(200).json({ success: true, ...result });
         } catch (error) {
@@ -26,10 +27,11 @@ export class CourseController {
     public getCourseById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const result = await this.courseService.findById(id);
+            const user = (req as any).user;
+            const result = await this.courseService.findById(id, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Course not found' });
+                res.status(404).json({ success: false, message: 'Course not found or unauthorized' });
                 return;
             }
 
@@ -42,8 +44,14 @@ export class CourseController {
     public createCourse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const courseData = req.body;
-            const result = await this.courseService.create(courseData);
+            const user = (req as any).user;
 
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                courseData.provider_id = user.id;
+            }
+
+            const result = await this.courseService.create(courseData);
             res.status(201).json({ success: true, data: result });
         } catch (error) {
             next(error);
@@ -54,10 +62,12 @@ export class CourseController {
         try {
             const id = req.params.id;
             const courseData = req.body;
-            const result = await this.courseService.update(id, courseData);
+            const user = (req as any).user;
+
+            const result = await this.courseService.update(id, courseData, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Course not found' });
+                res.status(404).json({ success: false, message: 'Course not found or unauthorized' });
                 return;
             }
 
@@ -70,10 +80,11 @@ export class CourseController {
     public deleteCourse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const result = await this.courseService.delete(id);
+            const user = (req as any).user;
+            const result = await this.courseService.delete(id, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Course not found' });
+                res.status(404).json({ success: false, message: 'Course not found or unauthorized' });
                 return;
             }
 

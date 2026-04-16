@@ -7,7 +7,9 @@ export class BlogController {
     // GET all blogs
     public getBlogs = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const blogs = await this.blogService.findAll();
+            const user = (req as any).user;
+            const isAdmin = user?.user_type === 'admin' || user?.role === 'admin';
+            const blogs = await this.blogService.findAll(isAdmin);
             res.json(blogs);
         } catch (err) {
             next(err);
@@ -17,7 +19,9 @@ export class BlogController {
     // GET single blog by ID
     public getBlogById = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const blog = await this.blogService.findById(req.params.id);
+            const user = (req as any).user;
+            const isAdmin = user?.user_type === 'admin' || user?.role === 'admin';
+            const blog = await this.blogService.findById(req.params.id, isAdmin);
             if (!blog) {
                 return res.status(404).json({ error: "Blog not found" });
             }
@@ -58,6 +62,28 @@ export class BlogController {
                 return res.status(404).json({ error: "Blog not found" });
             }
             res.json({ message: "Blog deleted successfully" });
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    // POST import blogs
+    public importBlogs = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const data = Array.isArray(req.body) ? req.body : [req.body];
+            const result = await this.blogService.import(data);
+            
+            if (result.failed === 0) {
+                res.status(200).json({ 
+                    message: `Successfully imported ${result.success} blogs`, 
+                    ...result 
+                });
+            } else {
+                res.status(207).json({ 
+                    message: `Import partially completed: ${result.success} succeeded, ${result.failed} failed`, 
+                    ...result 
+                });
+            }
         } catch (err) {
             next(err);
         }

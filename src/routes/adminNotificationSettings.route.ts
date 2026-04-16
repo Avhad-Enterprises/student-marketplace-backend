@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Route from '../interfaces/routes.interface';
 import AdminNotificationSettingsController from '@/controllers/adminNotificationSettings.controller';
 import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
 
 class AdminNotificationSettingsRoute implements Route {
   public path = '/api/settings/admin-notifications';
@@ -13,8 +14,10 @@ class AdminNotificationSettingsRoute implements Route {
   }
 
   private initializeRoutes() {
-    this.router.get(`/`, authMiddleware, this.adminNotificationSettingsController.getSettings);
-    this.router.post(`/`, authMiddleware, this.adminNotificationSettingsController.updateSettings);
+    this.router.use(authMiddleware, roleMiddleware(['admin']));
+
+    this.router.get(`/`, this.adminNotificationSettingsController.getSettings);
+    this.router.post(`/`, this.adminNotificationSettingsController.updateSettings);
   }
 }
 

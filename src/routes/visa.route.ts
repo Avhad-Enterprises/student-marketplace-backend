@@ -2,6 +2,9 @@ import { Router } from "express";
 import { VisaController } from "@/controllers/visa.controller";
 import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
+import roleMiddleware from "@/middlewares/role.middleware";
+import validationMiddleware from "@/middlewares/validation.middleware";
+import { CreateVisaDto, UpdateVisaDto } from "@/dtos/visa.dto";
 
 export class VisaRoute implements Route {
     public path = "/api/visa";
@@ -13,23 +16,18 @@ export class VisaRoute implements Route {
     }
 
     private initializeRoutes() {
+        // Apply authMiddleware to all visa routes
         this.router.use(authMiddleware);
 
-        // GET all visa types and metrics
+        // Publicly accessible by authenticated users
         this.router.get("/metrics", this.visaController.getMetrics);
-        this.router.get("/export", this.visaController.exportVisa);
         this.router.get("/", this.visaController.getAllVisas);
-
-        // GET visa by ID
         this.router.get("/:id", this.visaController.getVisaById);
 
-        // POST create visa
-        this.router.post("/", this.visaController.createVisa);
-
-        // PUT update visa
-        this.router.put("/:id", this.visaController.updateVisa);
-
-        // DELETE visa
-        this.router.delete("/:id", this.visaController.deleteVisa);
+        // Administrative & Provider Actions (+ Validation)
+        this.router.get("/export", roleMiddleware(['admin', 'provider']), this.visaController.exportVisa);
+        this.router.post("/", roleMiddleware(['admin', 'provider']), validationMiddleware(CreateVisaDto, 'body'), this.visaController.createVisa);
+        this.router.put("/:id", roleMiddleware(['admin', 'provider']), validationMiddleware(UpdateVisaDto, 'body'), this.visaController.updateVisa);
+        this.router.delete("/:id", roleMiddleware(['admin', 'provider']), this.visaController.deleteVisa);
     }
 }

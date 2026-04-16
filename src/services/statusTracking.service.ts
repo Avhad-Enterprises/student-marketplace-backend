@@ -10,43 +10,46 @@ export class StatusTrackingService {
   }
 
   public async findAll(stage?: string, risk_level?: string, search?: string) {
-    const baseQuery = DB("students as s").select(
-      "s.id as db_id",
-      "s.student_id",
-      "s.first_name",
-      "s.last_name",
-      "s.risk_level",
-      "s.current_stage as stage",
-      "s.current_country as country",
-      "s.assigned_counselor as counselor"
-    );
-
-    if (stage) baseQuery.where("s.current_stage", stage);
-    if (risk_level) baseQuery.where("s.risk_level", risk_level);
-    if (search) {
-      const like = `%${search}%`;
-      baseQuery.where(function () {
-        this.where("s.first_name", "ILIKE", like).orWhere("s.last_name", "ILIKE", like).orWhere("s.student_id", "ILIKE", like);
+    // Refactor N+1 query problem by using JOIN with DISTINCT ON to get the latest status for all students in one go
+    const studentsWithStatus = await DB("students as s")
+      .leftJoin(
+        DB("status_history")
+          .select("student_db_id", "sub_status", "created_at")
+          .distinctOn("student_db_id")
+          .orderBy("student_db_id")
+          .orderBy("created_at", "desc")
+          .as("sh"),
+        "s.id",
+        "sh.student_db_id"
+      )
+      .select(
+        "s.id as db_id",
+        "s.student_id",
+        "s.first_name",
+        "s.last_name",
+        "s.risk_level",
+        "s.current_stage as stage",
+        "s.current_country as country",
+        "s.assigned_counselor as counselor",
+        "sh.sub_status",
+        "sh.created_at as last_update"
+      )
+      .modify((qb) => {
+        if (stage) qb.where("s.current_stage", stage);
+        if (risk_level) qb.where("s.risk_level", risk_level);
+        if (search) {
+          const like = `%${search}%`;
+          qb.where(function () {
+            this.where("s.first_name", "ILIKE", like).orWhere("s.last_name", "ILIKE", like).orWhere("s.student_id", "ILIKE", like);
+          });
+        }
       });
-    }
 
-    const students = await baseQuery;
-
-    // for each student, fetch latest status_history
-    for (const st of students) {
-      const last = await DB("status_history").where("student_db_id", st.db_id).orderBy("created_at", "desc").first();
-      st.sub_status = last ? last.sub_status : null;
-      st.last_update = last ? last.created_at : null;
-    }
-
-    // sort by last_update desc nulls last
-    students.sort((a: any, b: any) => {
+    return studentsWithStatus.sort((a: any, b: any) => {
       if (!a.last_update) return 1;
       if (!b.last_update) return -1;
       return new Date(b.last_update).getTime() - new Date(a.last_update).getTime();
     });
-
-    return students;
   }
 
   public async updateStatus(studentDbId: number, stage: string, subStatus: string, notes: string, changedBy: string) {

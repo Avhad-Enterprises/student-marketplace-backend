@@ -15,7 +15,11 @@ export class BankController {
             const sort = req.query.sort as string;
             const order = req.query.order as string;
 
-            const result = await this.bankService.findAll(page, limit, search, status, account_type, student_visible, sort, order);
+            const user = (req as any).user;
+            const result = await this.bankService.findAll(
+                page, limit, search, status, account_type, student_visible, sort, order,
+                user?.user_type, user?.id
+            );
 
             res.status(200).json({ data: result.data, pagination: result.pagination, message: "findAll" });
         } catch (error) {
@@ -26,7 +30,8 @@ export class BankController {
     public getBankById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const bankId = req.params.id;
-            const findBankData = await this.bankService.findById(bankId);
+            const user = (req as any).user;
+            const findBankData = await this.bankService.findById(bankId, user?.user_type, user?.id);
 
             res.status(200).json({ data: findBankData, message: "findOne" });
         } catch (error) {
@@ -37,6 +42,13 @@ export class BankController {
     public createBank = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const bankData = req.body;
+            const user = (req as any).user;
+
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                bankData.provider_id = user.id;
+            }
+
             const createBankData = await this.bankService.create(bankData);
 
             res.status(201).json({ data: createBankData, message: "created" });
@@ -49,7 +61,14 @@ export class BankController {
         try {
             const bankId = req.params.id;
             const bankData = req.body;
-            const updateBankData = await this.bankService.update(bankId, bankData);
+            const user = (req as any).user;
+
+            const updateBankData = await this.bankService.update(bankId, bankData, user?.user_type, user?.id);
+
+            if (!updateBankData) {
+                res.status(404).json({ message: "Bank not found or unauthorized" });
+                return;
+            }
 
             res.status(200).json({ data: updateBankData, message: "updated" });
         } catch (error) {
@@ -60,7 +79,13 @@ export class BankController {
     public deleteBank = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const bankId = req.params.id;
-            const deleteBankData = await this.bankService.delete(bankId);
+            const user = (req as any).user;
+            const deleteBankData = await this.bankService.delete(bankId, user?.user_type, user?.id);
+
+            if (!deleteBankData) {
+                res.status(404).json({ message: "Bank not found or unauthorized" });
+                return;
+            }
 
             res.status(200).json({ data: deleteBankData, message: "deleted" });
         } catch (error) {

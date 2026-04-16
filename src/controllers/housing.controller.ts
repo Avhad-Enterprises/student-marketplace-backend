@@ -15,7 +15,8 @@ export class HousingController {
             const sort = req.query.sort as string;
             const order = req.query.order as string;
 
-            const result = await this.housingService.findAll(page, limit, search, status, housing_type, student_visible, sort, order);
+            const user = (req as any).user;
+            const result = await this.housingService.findAll(page, limit, search, status, housing_type, student_visible, sort, order, user?.user_type, user?.id);
 
             res.status(200).json({ success: true, ...result });
         } catch (error) {
@@ -26,10 +27,11 @@ export class HousingController {
     public getHousingById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const result = await this.housingService.findById(id);
+            const user = (req as any).user;
+            const result = await this.housingService.findById(id, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Housing provider not found' });
+                res.status(404).json({ success: false, message: 'Housing provider not found or unauthorized' });
                 return;
             }
 
@@ -42,8 +44,14 @@ export class HousingController {
     public createHousing = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const housingData = req.body;
-            const result = await this.housingService.create(housingData);
+            const user = (req as any).user;
 
+            // RBAC: Automatically assign provider_id if user is provider
+            if (user?.user_type === 'provider') {
+                housingData.provider_id = user.id;
+            }
+
+            const result = await this.housingService.create(housingData);
             res.status(201).json({ success: true, data: result });
         } catch (error) {
             next(error);
@@ -54,10 +62,12 @@ export class HousingController {
         try {
             const id = req.params.id;
             const housingData = req.body;
-            const result = await this.housingService.update(id, housingData);
+            const user = (req as any).user;
+
+            const result = await this.housingService.update(id, housingData, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Housing provider not found' });
+                res.status(404).json({ success: false, message: 'Housing provider not found or unauthorized' });
                 return;
             }
 
@@ -70,10 +80,11 @@ export class HousingController {
     public deleteHousing = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const id = req.params.id;
-            const result = await this.housingService.delete(id);
+            const user = (req as any).user;
+            const result = await this.housingService.delete(id, user?.user_type, user?.id);
 
             if (!result) {
-                res.status(404).json({ success: false, message: 'Housing provider not found' });
+                res.status(404).json({ success: false, message: 'Housing provider not found or unauthorized' });
                 return;
             }
 

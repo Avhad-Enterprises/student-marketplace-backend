@@ -2,6 +2,9 @@ import { Router } from "express";
 import { LibraryItemController } from "@/controllers/libraryItem.controller";
 import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
+import roleMiddleware from "@/middlewares/role.middleware";
+import validationMiddleware from "@/middlewares/validation.middleware";
+import { CreateLibraryItemDto, UpdateLibraryItemDto } from "@/dtos/libraryItem.dto";
 
 export class LibraryItemRoute implements Route {
     public path = "/api/library-items";
@@ -13,21 +16,16 @@ export class LibraryItemRoute implements Route {
     }
 
     private initializeRoutes() {
+        // Apply authMiddleware to all library item routes
         this.router.use(authMiddleware);
 
-        // GET all items
+        // Publicly accessible by authenticated users
         this.router.get("/", this.libraryItemController.getAllItems);
-
-        // GET item by id
         this.router.get("/:id", this.libraryItemController.getItemById);
 
-        // POST create item
-        this.router.post("/", this.libraryItemController.createItem);
-
-        // PUT update item
-        this.router.put("/:id", this.libraryItemController.updateItem);
-
-        // DELETE item
-        this.router.delete("/:id", this.libraryItemController.deleteItem);
+        // Administrative Actions (Admin only + Validation)
+        this.router.post("/", roleMiddleware(['admin']), validationMiddleware(CreateLibraryItemDto, 'body'), this.libraryItemController.createItem);
+        this.router.put("/:id", roleMiddleware(['admin']), validationMiddleware(UpdateLibraryItemDto, 'body'), this.libraryItemController.updateItem);
+        this.router.delete("/:id", roleMiddleware(['admin']), this.libraryItemController.deleteItem);
     }
 }

@@ -36,14 +36,33 @@ class UserService {
   /**
    * Update user details (including role)
    */
-  public async updateUser(userId: string, userData: Partial<User & { role_id: string }>): Promise<User> {
+  public async updateUser(userId: string, userData: any): Promise<User> {
+    const updateData: any = { ...userData };
+
+    // 1. Handle Password Hashing
+    if (updateData.password) {
+      if (updateData.password.length < 8) throw new HttpException(400, "Password must be at least 8 characters");
+      updateData.password_hash = await bcrypt.hash(updateData.password, 10);
+      delete updateData.password;
+    }
+
+    // 2. Handle Name Sync
+    if (updateData.first_name || updateData.last_name) {
+      // Fetch existing user to get current names if only one is provided
+      const existingUser = await this.findUserById(userId);
+      const fName = updateData.first_name || existingUser.first_name;
+      const lName = updateData.last_name || existingUser.last_name;
+      updateData.full_name = `${fName} ${lName || ''}`.trim();
+    }
+
     const [user]: User[] = await DB('users')
       .where('id', userId)
       .update({ 
-        ...userData,
+        ...updateData,
         updated_at: new Date() 
       })
       .returning('*');
+
     if (!user) throw new HttpException(404, "User not found");
     return user;
   }

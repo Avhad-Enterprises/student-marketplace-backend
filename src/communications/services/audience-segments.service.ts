@@ -40,12 +40,11 @@ export interface UpdateSegmentInput {
 
 export interface SegmentMember {
   id: number;
-  attendee_id: number;
-  attendee_name: string;
-  attendee_email?: string;
-  ticket_name?: string;
-  checkin_status: string;
-  registration_status?: string;
+  student_db_id: number;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  status?: string;
 }
 
 export class AudienceSegmentsService {
@@ -251,8 +250,17 @@ export class AudienceSegmentsService {
 
   // Get segment members
   async getSegmentMembers(segmentId: number, page: number = 1, limit: number = 20): Promise<any> {
-    const members = await db('audience_segment_members as sm').join('issued_tickets as a', 'sm.issued_ticket_id', 'a.id').where('sm.segment_id', segmentId).limit(limit).offset((page - 1) * limit);
-    return { members, total: members.length };
+    const members = await db('audience_segment_members as sm')
+      .join('students as s', 'sm.student_db_id', 's.id')
+      .where('sm.segment_id', segmentId)
+      .select('s.id', 's.first_name', 's.last_name', 's.email')
+      .limit(limit)
+      .offset((page - 1) * limit);
+    
+    const countResult = await db('audience_segment_members').where('segment_id', segmentId).count('id as count').first();
+    const total = parseInt((countResult as any)?.count || '0', 10);
+    
+    return { members, total };
   }
 }
 

@@ -2,6 +2,9 @@ import { Router } from "express";
 import { ActivityController } from "@/controllers/activities.controller";
 import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
+import roleMiddleware from "@/middlewares/role.middleware";
+import validationMiddleware from "@/middlewares/validation.middleware";
+import { CreateActivityDto, UpdateActivityDto } from "@/dtos/activities.dto";
 
 export class ActivityRoute implements Route {
   public path = "/api/activities";
@@ -13,18 +16,15 @@ export class ActivityRoute implements Route {
   }
 
   private initializeRoutes() {
+    // Apply authMiddleware to all activity routes
     this.router.use(authMiddleware);
 
-    // GET all activities for a student
+    // Publicly accessible by authenticated users (specific to the student)
     this.router.get("/:student_id", this.activityController.getActivitiesByStudentId);
 
-    // POST create activity
-    this.router.post("/", this.activityController.createActivity);
-
-    // PUT update activity
-    this.router.put("/:id", this.activityController.updateActivity);
-
-    // DELETE activity
-    this.router.delete("/:id", this.activityController.deleteActivity);
+    // Administrative Actions (Admin only + Validation)
+    this.router.post("/", roleMiddleware(['admin']), validationMiddleware(CreateActivityDto, 'body'), this.activityController.createActivity);
+    this.router.put("/:id", roleMiddleware(['admin']), validationMiddleware(UpdateActivityDto, 'body'), this.activityController.updateActivity);
+    this.router.delete("/:id", roleMiddleware(['admin']), this.activityController.deleteActivity);
   }
 }

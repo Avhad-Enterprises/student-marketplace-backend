@@ -1,5 +1,6 @@
 import DB from "@/database";
 import { Food } from "@/interfaces/food.interface";
+import cache from "@/utils/cache";
 
 export class FoodService {
     // GET all food with pagination and search
@@ -11,12 +12,24 @@ export class FoodService {
         service_type?: string,
         student_visible?: boolean,
         sort: string = "created_at",
-        order: string = "desc"
+        order: string = "desc",
+        userRole?: string,
+        providerId?: string | number
     ) {
+        const cacheKey = cache.generateKey('food:list', { page, limit, search, status, service_type, student_visible, sort, order, userRole, providerId });
+        const cachedData = cache.get<any>(cacheKey);
+        if (cachedData) return cachedData;
+
         const offset = (page - 1) * limit;
 
-        const countQuery = DB('food').count('* as count');
-        const dataQuery = DB('food').select('*');
+        const countQuery = DB('food').where('is_deleted', false);
+        const dataQuery = DB('food').where('is_deleted', false);
+
+        // RBAC: Provider only sees their own data
+        if (userRole === 'provider' && providerId) {
+            countQuery.andWhere('provider_id', providerId);
+            dataQuery.andWhere('provider_id', providerId);
+        }
 
         if (search) {
             const term = `%${search}%`;
@@ -58,7 +71,7 @@ export class FoodService {
 
         const rows = await dataQuery.limit(limit).offset(offset);
 
-        return {
+        const result = {
             data: rows,
             pagination: {
                 total,
@@ -67,37 +80,51 @@ export class FoodService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
     // GET food by ID
-    public async findById(id: string | number) {
-        const result = await DB('food').where('id', id).first();
+    public async findById(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('food').where('id', id).andWhere('is_deleted', false);
+        
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const result = await query.first();
         return result || null;
     }
 
     // CREATE food
     public async create(foodData: any) {
-        const reference_id = foodData.reference_id || foodData.referenceId || `FOOD-${Date.now()}`;
-
         const payload = {
-            reference_id,
             platform: foodData.platform,
             service_type: foodData.service_type || foodData.serviceType,
             offer_details: foodData.offer_details || foodData.offerDetails,
-            countries_covered: foodData.countries_covered !== undefined ? foodData.countries_covered : (foodData.countriesCovered || 0),
             status: foodData.status || 'active',
             student_visible: foodData.student_visible !== undefined ? foodData.student_visible : (foodData.studentVisible !== undefined ? foodData.studentVisible : true),
             avg_cost: foodData.avg_cost || foodData.avgCost,
-            verified: foodData.verified !== undefined ? foodData.verified : false,
-            popularity: foodData.popularity !== undefined ? foodData.popularity : (foodData.popularity || 0),
+            provider_id: foodData.provider_id,
         };
 
         const inserted = await DB('food').insert(payload).returning('*');
+        cache.del('food:');
         return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
     // UPDATE food
-    public async update(id: string | number, foodData: any) {
+    public async update(id: string | number, foodData: any, userRole?: string, providerId?: string | number) {
+        let query = DB('food').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const existing = await query.first();
+        if (!existing) return null;
+
         const payload: any = {
             updated_at: DB.fn.now(),
         };
@@ -106,40 +133,52 @@ export class FoodService {
         if (foodData.service_type || foodData.serviceType) payload.service_type = foodData.service_type || foodData.serviceType;
         if (foodData.offer_details !== undefined) payload.offer_details = foodData.offer_details;
         if (foodData.offerDetails !== undefined) payload.offer_details = foodData.offerDetails;
-        if (foodData.countries_covered !== undefined) payload.countries_covered = foodData.countries_covered;
-        if (foodData.countriesCovered !== undefined) payload.countries_covered = foodData.countriesCovered;
         if (foodData.status) payload.status = foodData.status;
         if (foodData.student_visible !== undefined) payload.student_visible = foodData.student_visible;
         if (foodData.studentVisible !== undefined) payload.student_visible = foodData.studentVisible;
         if (foodData.avg_cost || foodData.avgCost) payload.avg_cost = foodData.avg_cost || foodData.avgCost;
-        if (foodData.verified !== undefined) payload.verified = foodData.verified;
-        if (foodData.popularity !== undefined) payload.popularity = foodData.popularity;
 
         const updated = await DB('food').where('id', id).update(payload).returning('*');
+        if (updated) cache.del('food:');
         return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
     }
 
     // DELETE food
-    public async delete(id: string | number) {
-        const deleted = await DB('food').where('id', id).del().returning('*');
-        return Array.isArray(deleted) && deleted.length > 0;
+    public async delete(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('food').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const deletedCount = await query.update({ is_deleted: true, updated_at: DB.fn.now() });
+        if (deletedCount > 0) cache.del('food:');
+        return deletedCount > 0;
     }
 
     // GET food metrics
     public async getMetrics() {
-        const totalPlatforms = await DB('food').countDistinct('platform as count').first();
-        const countriesServed = await DB('food').sum('countries_covered as sum').first();
-        const totalCount = await DB('food').count('* as count').first();
+        const cacheKey = 'food:metrics';
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
 
-        // Standardized mock values for metrics
-        const foodPlacements = (parseInt(String(totalCount?.count || 0)) * 25);
-        const activeUsers = (parseInt(String(totalCount?.count || 0)) * 150);
+        const metrics = await DB('food')
+            .where('is_deleted', false)
+            .select(
+                DB.raw('count(distinct platform) as total_platforms'),
+                DB.raw('count(*) as total_count')
+            )
+            .first();
 
-        return {
-            totalPartners: parseInt(String(totalPlatforms?.count || 0)),
-            activeUsers: activeUsers.toLocaleString(),
-            countriesServed: parseInt(String(countriesServed?.sum || 0)),
-            studentSavings: `$${(parseInt(String(totalCount?.count || 0)) * 50).toLocaleString()}`
+        const count = parseInt(String(metrics?.total_count || 0));
+
+        const result = {
+            totalPartners: parseInt(String(metrics?.total_platforms || 0)),
+            activeUsers: (count * 150).toLocaleString(),
+            studentSavings: `$${(count * 50).toLocaleString()}`
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 }

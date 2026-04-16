@@ -16,7 +16,11 @@ class DashboardController {
 
   public getSummary = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const data = await this.dashboardService.getSummary();
+        const { startDate, endDate } = req.query as { startDate: string, endDate: string };
+        const start = startDate ? new Date(startDate) : undefined;
+        const end = endDate ? new Date(endDate) : undefined;
+        
+        const data = await this.dashboardService.getSummary(start, end);
         res.status(200).json({ data, message: 'ok' });
     } catch (error) {
       next(error);
@@ -43,7 +47,11 @@ class DashboardController {
 
   public getAdminUsers = async (req: any, res: Response, next: NextFunction) => {
     try {
-      const data = await this.dashboardService.getAdminUsers();
+      const { startDate, endDate } = req.query as { startDate: string, endDate: string };
+      const start = startDate ? new Date(startDate) : undefined;
+      const end = endDate ? new Date(endDate) : undefined;
+
+      const data = await this.dashboardService.getAdminUsers(start, end);
       res.status(200).json({ data, message: 'ok' });
     } catch (error) {
       next(error);

@@ -2,6 +2,9 @@ import { Router } from "express";
 import { PaymentController } from "@/controllers/payments.controller";
 import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
+import roleMiddleware from "@/middlewares/role.middleware";
+import validationMiddleware from "@/middlewares/validation.middleware";
+import { CreatePaymentDto, UpdatePaymentDto } from "@/dtos/payments.dto";
 
 export class PaymentRoute implements Route {
   public path = "/api/payments";
@@ -13,24 +16,18 @@ export class PaymentRoute implements Route {
   }
 
   private initializeRoutes() {
+    // Apply authMiddleware to all payment routes
     this.router.use(authMiddleware);
 
-    // GET all payments
-    this.router.get("/", this.paymentController.getAllPayments);
-
-    // GET payment summary for a student (before :studentDbId so it takes priority)
+    // Publicly accessible by authenticated users
+    this.router.get("/invoice/:id", this.paymentController.getPaymentById);
     this.router.get("/:studentDbId/summary", this.paymentController.getPaymentSummary);
-
-    // GET all payments for a student
     this.router.get("/:studentDbId", this.paymentController.getPaymentsByStudentId);
 
-    // POST create payment
-    this.router.post("/", this.paymentController.createPayment);
-
-    // PUT update payment
-    this.router.put("/:id", this.paymentController.updatePayment);
-
-    // DELETE payment
-    this.router.delete("/:id", this.paymentController.deletePayment);
+    // Administrative Actions (Admin only + Validation)
+    this.router.get("/", roleMiddleware(['admin']), this.paymentController.getAllPayments);
+    this.router.post("/", roleMiddleware(['admin']), validationMiddleware(CreatePaymentDto, 'body'), this.paymentController.createPayment);
+    this.router.put("/:id", roleMiddleware(['admin']), validationMiddleware(UpdatePaymentDto, 'body'), this.paymentController.updatePayment);
+    this.router.delete("/:id", roleMiddleware(['admin']), this.paymentController.deletePayment);
   }
 }

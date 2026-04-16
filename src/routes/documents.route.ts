@@ -2,6 +2,9 @@ import { Router } from "express";
 import { DocumentController } from "@/controllers/documents.controller";
 import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
+import roleMiddleware from "@/middlewares/role.middleware";
+import validationMiddleware from "@/middlewares/validation.middleware";
+import { CreateDocumentDto, UpdateDocumentDto } from "@/dtos/documents.dto";
 
 export class DocumentRoute implements Route {
   public path = "/api/documents";
@@ -13,18 +16,15 @@ export class DocumentRoute implements Route {
   }
 
   private initializeRoutes() {
+    // Apply authMiddleware to all document routes
     this.router.use(authMiddleware);
 
-    // GET all documents for a student
+    // Publicly accessible by authenticated users (specific to the student)
     this.router.get("/:studentDbId", this.documentController.getDocumentsByStudentId);
 
-    // POST create document
-    this.router.post("/", this.documentController.createDocument);
-
-    // PUT update document
-    this.router.put("/:id", this.documentController.updateDocument);
-
-    // DELETE document
-    this.router.delete("/:id", this.documentController.deleteDocument);
+    // Administrative Actions (Admin only + Validation)
+    this.router.post("/", roleMiddleware(['admin']), validationMiddleware(CreateDocumentDto, 'body'), this.documentController.createDocument);
+    this.router.put("/:id", roleMiddleware(['admin']), validationMiddleware(UpdateDocumentDto, 'body'), this.documentController.updateDocument);
+    this.router.delete("/:id", roleMiddleware(['admin']), this.documentController.deleteDocument);
   }
 }

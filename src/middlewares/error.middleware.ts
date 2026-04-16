@@ -9,10 +9,15 @@ const errorMiddleware = (error: HttpException, req: Request, res: Response, next
 
         logger.error(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${message}`);
 
+        // Security: Mask internal error messages (500) in non-development environments
+        const responseMessage = (status === 500 && process.env.NODE_ENV !== 'development') 
+            ? 'Internal server error' 
+            : message;
+
         const errorResponse: any = {
             success: false,
             error: {
-                message,
+                message: responseMessage,
                 status,
             },
             timestamp: new Date().toISOString(),

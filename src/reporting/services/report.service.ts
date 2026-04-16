@@ -23,9 +23,9 @@ export class ReportService {
         this.db = db;
     }
 
-    async runReport(config: RunReportInput) {
+    async runReport(config: RunReportInput, eventId?: number) {
         try {
-            const query = buildQuery(this.db, config);
+            const query = buildQuery(this.db, config, eventId);
             const data = await query;
             return {
                 success: true,
@@ -39,9 +39,9 @@ export class ReportService {
         }
     }
 
-    async exportReport(config: RunReportInput, format: string) {
+    async exportReport(config: RunReportInput, format: string, eventId?: number) {
         try {
-            const query = buildQuery(this.db, config);
+            const query = buildQuery(this.db, config, eventId);
             const data = await query;
             
             // Determine column order
@@ -196,13 +196,15 @@ export class ReportService {
         name: string;
         config: any;
         created_by?: number;
+        event_id?: number;
     }) {
         try {
-            const { name, config, created_by } = payload;
+            const { name, config, created_by, event_id } = payload;
             
             const [report] = await this.db("reports")
                 .insert({
                     name,
+                    event_id: event_id || config.event_id || null,
                     category: config.category || null,
                     visualization_type: config.visualization || 'table',
                     config_json: JSON.stringify(config),
@@ -229,12 +231,18 @@ export class ReportService {
         name: string;
         config: any;
         updated_by?: number;
+        event_id?: number;
     }) {
         try {
-            const { name, config, updated_by } = payload;
+            const { name, config, updated_by, event_id } = payload;
             
-            const [report] = await this.db("reports")
-                .where({ id })
+            const query = this.db("reports").where({ id });
+            
+            if (event_id) {
+                query.where({ event_id });
+            }
+
+            const [report] = await query
                 .update({
                     name,
                     category: config.category || null,
@@ -266,9 +274,15 @@ export class ReportService {
         }
     }
 
-    async getReports() {
+    async getReports(eventId?: number) {
         try {
-            const reports = await this.db("reports").select("*");
+            const query = this.db("reports").select("*");
+            
+            if (eventId) {
+                query.where({ event_id: eventId });
+            }
+
+            const reports = await query;
 
             return {
                 success: true,
@@ -282,11 +296,15 @@ export class ReportService {
         }
     }
 
-    async getReportById(id: number) {
+    async getReportById(id: number, eventId?: number) {
         try {
-            const report = await this.db("reports")
-                .where({ id })
-                .first();
+            const query = this.db("reports").where({ id });
+            
+            if (eventId) {
+                query.where({ event_id: eventId });
+            }
+
+            const report = await query.first();
 
             if (!report) {
                 return { success: false, message: "Report not found" };
@@ -296,8 +314,8 @@ export class ReportService {
                 ? JSON.parse(report.config_json) 
                 : report.config_json;
 
-            const query = buildQuery(this.db, config);
-            const data = await query;
+            const dataQuery = buildQuery(this.db, config, report.event_id);
+            const data = await dataQuery;
 
             return {
                 success: true,

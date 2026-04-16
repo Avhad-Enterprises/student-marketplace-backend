@@ -1,8 +1,5 @@
 import dotenv from "dotenv";
-
-if (process.env.NODE_ENV !== "production") {
-  dotenv.config();
-}
+dotenv.config();
 // console.log("!!! SERVER.TS STARTED !!!"); // Removing debug log
 import App from "./app";
 import validateEnv from "./utils/validateEnv";

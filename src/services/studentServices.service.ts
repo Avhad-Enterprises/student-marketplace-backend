@@ -2,11 +2,19 @@ import DB from "@/database";
 
 export class StudentServicesService {
   public async findByStudentId(studentDbId: string | number) {
-    return await DB("student_services").where("student_db_id", studentDbId).orderBy("created_at", "desc");
+    return await DB("student_services")
+      .join("students", "student_services.student_db_id", "=", "students.id")
+      .select("student_services.*", "students.student_id")
+      .where("student_services.student_db_id", studentDbId)
+      .orderBy("student_services.created_at", "desc");
   }
 
   public async findById(id: string | number) {
-    const row = await DB("student_services").where("id", id).first();
+    const row = await DB("student_services")
+      .join("students", "student_services.student_db_id", "=", "students.id")
+      .select("student_services.*", "students.student_id")
+      .where("student_services.id", id)
+      .first();
     return row || null;
   }
 

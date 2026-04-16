@@ -1,5 +1,6 @@
 import DB from "@/database";
 import { SimCard } from "@/interfaces/simCards.interface";
+import cache from "@/utils/cache";
 
 export class SimCardService {
     // GET all SIM cards with pagination and search
@@ -11,21 +12,33 @@ export class SimCardService {
         network_type?: string,
         student_visible?: boolean,
         sort: string = "created_at",
-        order: string = "desc"
+        order: string = "desc",
+        userRole?: string,
+        providerId?: string | number
     ) {
+        const cacheKey = cache.generateKey('simcards:list', { page, limit, search, status, network_type, student_visible, sort, order, userRole, providerId });
+        const cachedData = cache.get<any>(cacheKey);
+        if (cachedData) return cachedData;
+
         const offset = (page - 1) * limit;
 
-        const countQuery = DB('sim_cards').count('* as count');
-        const dataQuery = DB('sim_cards').select('*');
+        const countQuery = DB('sim_cards').where('is_deleted', false);
+        const dataQuery = DB('sim_cards').where('is_deleted', false);
+
+        // RBAC: Provider only sees their own data
+        if (userRole === 'provider' && providerId) {
+            countQuery.andWhere('provider_id', providerId);
+            dataQuery.andWhere('provider_id', providerId);
+        }
 
         if (search) {
             const term = `%${search}%`;
-            countQuery.where(function () {
+            countQuery.andWhere(function () {
                 this.whereILike('provider_name', term)
                     .orWhereILike('service_name', term)
                     .orWhereILike('sim_id', term);
             });
-            dataQuery.where(function () {
+            dataQuery.andWhere(function () {
                 this.whereILike('provider_name', term)
                     .orWhereILike('service_name', term)
                     .orWhereILike('sim_id', term);
@@ -33,18 +46,18 @@ export class SimCardService {
         }
 
         if (status) {
-            countQuery.where('status', status);
-            dataQuery.where('status', status);
+            countQuery.andWhere('status', status);
+            dataQuery.andWhere('status', status);
         }
 
         if (network_type) {
-            countQuery.where('network_type', network_type);
-            dataQuery.where('network_type', network_type);
+            countQuery.andWhere('network_type', network_type);
+            dataQuery.andWhere('network_type', network_type);
         }
 
         if (student_visible !== undefined) {
-            countQuery.where('student_visible', student_visible);
-            dataQuery.where('student_visible', student_visible);
+            countQuery.andWhere('student_visible', student_visible);
+            dataQuery.andWhere('student_visible', student_visible);
         }
 
         const totalRes = await countQuery.first();
@@ -56,7 +69,7 @@ export class SimCardService {
 
         const rows = await dataQuery.orderBy(finalSort, finalOrder).limit(limit).offset(offset);
 
-        return {
+        const result = {
             data: rows,
             pagination: {
                 total,
@@ -65,11 +78,20 @@ export class SimCardService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 
     // GET SIM card by ID
-    public async findById(id: string | number) {
-        const result = await DB('sim_cards').where('id', id).first();
+    public async findById(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('sim_cards').where('id', id).andWhere('is_deleted', false);
+        
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const result = await query.first();
         return result || null;
     }
 
@@ -91,11 +113,21 @@ export class SimCardService {
         };
 
         const inserted = await DB('sim_cards').insert(payload).returning('*');
+        cache.del('simcards:');
         return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
     // UPDATE SIM card
-    public async update(id: string | number, simData: any) {
+    public async update(id: string | number, simData: any, userRole?: string, providerId?: string | number) {
+        let query = DB('sim_cards').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const existing = await query.first();
+        if (!existing) return null;
+
         const payload: any = {
             updated_at: DB.fn.now(),
         };
@@ -113,27 +145,53 @@ export class SimCardService {
         if (simData.popularity !== undefined) payload.popularity = simData.popularity;
 
         const updated = await DB('sim_cards').where('id', id).update(payload).returning('*');
+        if (updated) cache.del('simcards:');
         return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
     }
 
-    // DELETE SIM card
-    public async delete(id: string | number) {
-        const deleted = await DB('sim_cards').where('id', id).del().returning('*');
-        return Array.isArray(deleted) && deleted.length > 0;
+    // DELETE SIM card (Soft Delete)
+    public async delete(id: string | number, userRole?: string, providerId?: string | number) {
+        let query = DB('sim_cards').where('id', id).andWhere('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const deleted = await query.update({ is_deleted: true, updated_at: DB.fn.now() }).returning('*');
+        const isSuccess = Array.isArray(deleted) && deleted.length > 0;
+        if (isSuccess) cache.del('simcards:');
+        return isSuccess;
     }
 
     // GET SIM metrics
     public async getMetrics() {
-        const totalProviders = await DB('sim_cards').countDistinct('provider_name as count').first();
-        const activePlans = await DB('sim_cards').where('status', 'active').count('* as count').first();
-        const countriesCovered = await DB('sim_cards').max('countries_covered as max').first();
-        const mostPopular = await DB('sim_cards').orderBy('popularity', 'desc').select('provider_name').first();
+        const cacheKey = 'simcards:metrics';
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
 
-        return {
-            totalProviders: parseInt((totalProviders as any).count || 0),
-            activePlans: parseInt((activePlans as any).count || 0),
-            countriesCovered: parseInt((countriesCovered as any).max || 0),
+        const metrics = await DB('sim_cards')
+            .where('is_deleted', false)
+            .select(
+                DB.raw('count(distinct provider_name) as total_providers'),
+                DB.raw("count(*) FILTER (WHERE status = 'active') as active_plans"),
+                DB.raw('max(countries_covered) as max_countries')
+            )
+            .first();
+
+        const mostPopular = await DB('sim_cards')
+            .where('is_deleted', false)
+            .orderBy('popularity', 'desc')
+            .select('provider_name')
+            .first();
+
+        const result = {
+            totalProviders: parseInt(String(metrics?.total_providers || 0)),
+            activePlans: parseInt(String(metrics?.active_plans || 0)),
+            countriesCovered: parseInt(String(metrics?.max_countries || 0)),
             mostPopular: (mostPopular as any)?.provider_name || 'N/A',
         };
+
+        cache.set(cacheKey, result);
+        return result;
     }
 }

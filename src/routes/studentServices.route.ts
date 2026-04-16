@@ -2,6 +2,9 @@ import { Router } from "express";
 import { StudentServicesController } from "@/controllers/studentServices.controller";
 import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
+import roleMiddleware from "@/middlewares/role.middleware";
+import validationMiddleware from "@/middlewares/validation.middleware";
+import { CreateStudentServiceDto, UpdateStudentServiceDto } from "@/dtos/studentServices.dto";
 
 export class StudentServicesRoute implements Route {
   public path = "/api/services";
@@ -13,18 +16,15 @@ export class StudentServicesRoute implements Route {
   }
 
   private initializeRoutes() {
+    // Apply authMiddleware to all student services routes
     this.router.use(authMiddleware);
 
-    // GET all services for a student
+    // Publicly accessible by authenticated users (specific to the student)
     this.router.get("/:studentDbId", this.studentServicesController.getServicesByStudentId);
 
-    // POST create service
-    this.router.post("/", this.studentServicesController.createService);
-
-    // PUT update service
-    this.router.put("/:id", this.studentServicesController.updateService);
-
-    // DELETE service
-    this.router.delete("/:id", this.studentServicesController.deleteService);
+    // Administrative Actions (Admin only + Validation)
+    this.router.post("/", roleMiddleware(['admin']), validationMiddleware(CreateStudentServiceDto, 'body'), this.studentServicesController.createService);
+    this.router.put("/:id", roleMiddleware(['admin']), validationMiddleware(UpdateStudentServiceDto, 'body'), this.studentServicesController.updateService);
+    this.router.delete("/:id", roleMiddleware(['admin']), this.studentServicesController.deleteService);
   }
 }
