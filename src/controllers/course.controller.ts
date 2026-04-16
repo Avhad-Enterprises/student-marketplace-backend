@@ -1,5 +1,6 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response, NextFunction } from "express";
 import { CourseService } from '@/services/course.service';
+import { ExportRunner, ExportOptions } from '@/utils/exportRunner';
 
 export class CourseController {
     public courseService = new CourseService();
@@ -98,6 +99,33 @@ export class CourseController {
         try {
             const result = await this.courseService.getMetrics();
             res.status(200).json({ success: true, data: result });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    public exportCourses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const user = (req as any).user;
+            const data = await this.courseService.exportCourses(req.query, user?.user_type, user?.id);
+            
+            const keyMap = {
+                'id': 'id',
+                'referenceId': 'reference_id',
+                'courseName': 'course_name',
+                'provider': 'provider',
+                'category': 'category',
+                'duration': 'duration',
+                'status': 'status',
+                'popularity': 'popularity',
+                'avgCost': 'avg_cost'
+            };
+
+            const result = await ExportRunner.run(data, req.query as unknown as ExportOptions, 'Courses', keyMap);
+            
+            res.setHeader('Content-Type', result.mimeType);
+            res.setHeader('Content-Disposition', `attachment; filename=courses-export-${Date.now()}.${result.extension}`);
+            res.status(200).send(result.data);
         } catch (error) {
             next(error);
         }

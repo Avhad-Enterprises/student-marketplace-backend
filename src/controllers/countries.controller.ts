@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { CountryService } from "@/services/countries.service";
+import { ExportRunner, ExportOptions } from "@/utils/exportRunner";
 
 export class CountryController {
   private countryService = new CountryService();
@@ -110,7 +111,23 @@ export class CountryController {
       }
 
       const data = await this.countryService.exportCountries(ids);
-      res.json(data);
+      
+      const keyMap = {
+        'id': 'id',
+        'name': 'name',
+        'code': 'code',
+        'region': 'region',
+        'visaDifficulty': 'visa_difficulty',
+        'costOfLiving': 'cost_of_living',
+        'status': 'status',
+        'popularity': 'popularity'
+      };
+
+      const result = await ExportRunner.run(data, req.query as unknown as ExportOptions, 'Countries', keyMap);
+      
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename=countries-export-${Date.now()}.${result.extension}`);
+      res.status(200).send(result.data);
     } catch (err) {
       next(err);
     }

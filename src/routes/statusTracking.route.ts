@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { StatusTrackingController } from "@/controllers/statusTracking.controller";
+import StatusTrackingController from "@/controllers/statusTracking.controller";
 import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
 import roleMiddleware from "@/middlewares/role.middleware";
@@ -25,6 +25,7 @@ export class StatusTrackingRoute implements Route {
     // Administrative Actions (Admin only + Validation)
     this.router.get("/metrics", roleMiddleware(['admin']), this.statusTrackingController.getMetrics);
     this.router.get("/all", roleMiddleware(['admin']), this.statusTrackingController.getAllStatusTracking);
+    this.router.get("/export", roleMiddleware(['admin']), this.statusTrackingController.exportLeads);
     this.router.post("/update", roleMiddleware(['admin']), validationMiddleware(UpdateStatusTrackingDto, 'body'), this.statusTrackingController.updateStatus);
   }
 }

@@ -67,7 +67,6 @@ export class StatusTrackingService {
     const completedCount = await DB("students").where("current_stage", "completed").count("* as count").first();
 
     // For Awaiting Decision and Blocked, we need to check sub_status in the latest status_history for each student
-    // This is more efficiently done by querying the latest status for students in relevant stages
     const awaitingDecision = await DB("students as s")
       .join(
         DB("status_history")
@@ -112,5 +111,48 @@ export class StatusTrackingService {
       completedCount: parseInt(((completedCount as any) || {}).count || "0"),
       blockedCount: parseInt(((blockedCount as any) || {}).count || "0")
     };
+  }
+
+  public async exportLeads(ids?: (string | number)[], stage?: string, risk_level?: string, search?: string) {
+    const query = DB("students as s")
+      .leftJoin(
+        DB("status_history")
+          .select("student_db_id", "sub_status", "created_at", "notes", "changed_by")
+          .distinctOn("student_db_id")
+          .orderBy("student_db_id")
+          .orderBy("created_at", "desc")
+          .as("sh"),
+        "s.id",
+        "sh.student_db_id"
+      )
+      .select(
+        "s.id as db_id",
+        "s.student_id",
+        "s.first_name",
+        "s.last_name",
+        "s.email",
+        "s.risk_level",
+        "s.current_stage as stage",
+        "s.current_country as country",
+        "s.assigned_counselor as counselor",
+        "sh.sub_status",
+        "sh.created_at as last_update",
+        "sh.notes as last_notes"
+      );
+
+    if (ids && ids.length > 0) {
+      query.whereIn("s.id", ids);
+    } else {
+      if (stage) query.where("s.current_stage", stage);
+      if (risk_level) query.where("s.risk_level", risk_level);
+      if (search) {
+        const like = `%${search}%`;
+        query.where(function () {
+          this.where("s.first_name", "ILIKE", like).orWhere("s.last_name", "ILIKE", like).orWhere("s.student_id", "ILIKE", like);
+        });
+      }
+    }
+
+    return await query;
   }
 }

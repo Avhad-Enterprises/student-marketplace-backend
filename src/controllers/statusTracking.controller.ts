@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusTrackingService } from "@/services/statusTracking.service";
+import { ExportRunner, ExportOptions } from "@/utils/exportRunner";
 
 export class StatusTrackingController {
   private statusTrackingService = new StatusTrackingService();
@@ -50,7 +51,6 @@ export class StatusTrackingController {
     }
   };
 
-  // GET metrics
   public getMetrics = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const metrics = await this.statusTrackingService.getMetrics();
@@ -59,4 +59,47 @@ export class StatusTrackingController {
       next(err);
     }
   };
+
+  // GET export leads
+  public exportLeads = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      let ids: (string | number)[] | undefined;
+      const { ids: queryIds, stage, risk_level, search } = req.query;
+
+      if (queryIds && typeof queryIds === 'string') {
+        ids = queryIds.split(",");
+      }
+
+      const data = await this.statusTrackingService.exportLeads(
+        ids,
+        stage as string,
+        risk_level as string,
+        search as string
+      );
+
+      const keyMap = {
+        'student_id': 'student_id',
+        'first_name': 'first_name',
+        'last_name': 'last_name',
+        'email': 'email',
+        'risk_level': 'risk_level',
+        'stage': 'stage',
+        'country': 'country',
+        'counselor': 'counselor',
+        'sub_status': 'sub_status',
+        'last_update': 'last_update',
+        'last_notes': 'last_notes'
+      };
+
+      const result = await ExportRunner.run(data, req.query as unknown as ExportOptions, 'Leads', keyMap);
+      
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename=leads-export-${Date.now()}.${result.extension}`);
+      res.status(200).send(result.data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }
+
+export default StatusTrackingController;

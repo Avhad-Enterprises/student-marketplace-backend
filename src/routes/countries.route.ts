@@ -27,7 +27,7 @@ export class CountryRoute implements Route {
     this.router.get("/:id", this.countryController.getCountryById);
 
     // Administrative Actions (Admin only)
-    this.router.get("/export/data", roleMiddleware(['admin']), this.countryController.exportCountries);
+    this.router.get("/export", roleMiddleware(['admin']), this.countryController.exportCountries);
     this.router.post("/import", roleMiddleware(['admin']), this.countryController.importCountries);
     this.router.post("/bulk-update", roleMiddleware(['admin']), this.countryController.bulkUpdateCountries);
     

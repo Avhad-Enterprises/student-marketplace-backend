@@ -27,7 +27,7 @@ export class UniversityRoute implements Route {
     this.router.get("/:id", this.universityController.getUniversityById);
 
     // Administrative Actions (Admin only)
-    this.router.get("/export/data", roleMiddleware(['admin']), this.universityController.exportUniversities);
+    this.router.get("/export", roleMiddleware(['admin']), this.universityController.exportUniversities);
     this.router.post("/import", roleMiddleware(['admin']), this.universityController.importUniversities);
     
     // Create & Update (Admin only + Validation)

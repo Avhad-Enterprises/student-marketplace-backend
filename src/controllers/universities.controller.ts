@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { UniversityService } from "@/services/universities.service";
+import { ExportRunner, ExportOptions } from "@/utils/exportRunner";
 
 export class UniversityController {
   private universityService = new UniversityService();
@@ -117,7 +118,22 @@ export class UniversityController {
   public exportUniversities = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = await this.universityService.exportUniversities();
-      res.json(data);
+      
+      const keyMap = {
+        'id': 'id',
+        'name': 'name',
+        'country': 'country_id', // This might need a join or just leave as ID
+        'type': 'type',
+        'status': 'status',
+        'popularity': 'popularity',
+        'globalRanking': 'global_ranking'
+      };
+
+      const result = await ExportRunner.run(data, req.query as unknown as ExportOptions, 'Universities', keyMap);
+      
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename=universities-export-${Date.now()}.${result.extension}`);
+      res.status(200).send(result.data);
     } catch (err) {
       next(err);
     }

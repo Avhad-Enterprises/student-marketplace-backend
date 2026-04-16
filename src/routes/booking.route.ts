@@ -21,6 +21,7 @@ export class BookingRoute implements Routes {
 
         // Global list and individual view (Admin only until schema supports student ID)
         this.router.get(`/`, roleMiddleware(['admin']), this.bookingController.getAllBookings);
+        this.router.get(`/export`, roleMiddleware(['admin']), this.bookingController.exportBookings);
         this.router.get(`/:id`, roleMiddleware(['admin']), this.bookingController.getBookingById);
 
         // Administrative Actions (Admin only + Validation)

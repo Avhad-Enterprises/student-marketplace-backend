@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import { VisaService, ExportResult } from '@/services/visa.service';
+import { VisaService } from '@/services/visa.service';
+import { ExportRunner, ExportOptions } from '@/utils/exportRunner';
 import { logger } from '@/utils/logger';
 
 export class VisaController {
@@ -115,10 +116,32 @@ export class VisaController {
         try {
             logger.info(`[VisaController.exportVisa] Processing export request with query: ${JSON.stringify(req.query)}`);
             const user = (req as any).user;
-            const { data, mimeType, extension }: ExportResult = await this.visaService.exportVisas(req.query, user?.user_type, user?.id);
-            res.setHeader('Content-Type', mimeType);
-            res.setHeader('Content-Disposition', `attachment; filename=visa-export-${Date.now()}.${extension}`);
-            res.status(200).send(data);
+            let ids: (string | number)[] | undefined;
+            const { ids: queryIds } = req.query;
+
+            if (queryIds && typeof queryIds === 'string') {
+                ids = queryIds.split(",");
+            }
+
+            const data = await this.visaService.exportVisas(ids, user?.user_type, user?.id);
+            
+            const keyMap = {
+                'id': 'visa_id',
+                'type': 'visa_type',
+                'category': 'category',
+                'countries': 'countries_covered',
+                'status': 'status',
+                'difficulty': 'processing_difficulty',
+                'visible': 'student_visible',
+                'workRights': 'work_rights',
+                'popularity': 'popularity'
+            };
+
+            const result = await ExportRunner.run(data, req.query as unknown as ExportOptions, 'Visa', keyMap);
+            
+            res.setHeader('Content-Type', result.mimeType);
+            res.setHeader('Content-Disposition', `attachment; filename=visa-export-${Date.now()}.${result.extension}`);
+            res.status(200).send(result.data);
         } catch (error) {
             logger.error(`[VisaController.exportVisa] Error: ${(error as any).message}`);
             next(error);

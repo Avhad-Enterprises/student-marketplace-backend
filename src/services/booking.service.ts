@@ -74,4 +74,29 @@ export class BookingService {
 
         return { success, failed, errors };
     }
+
+    public async exportBookings(filters: any) {
+        const { search, from, to, status, scope, ids } = filters;
+        let query = DB('bookings').select('*');
+
+        if (scope === 'selected' && ids) {
+            const idsList = ids.split(',');
+            query = query.whereIn('booking_id', idsList);
+        } else {
+            if (search) {
+                const term = `%${search}%`;
+                query.where(function () {
+                    this.whereILike('student_name', term)
+                        .orWhereILike('expert', term)
+                        .orWhereILike('service', term)
+                        .orWhereILike('booking_id', term);
+                });
+            }
+            if (status) query.where('status', status.toLowerCase());
+            if (from) query.where('date_time', '>=', from);
+            if (to) query.where('date_time', '<=', to);
+        }
+
+        return await query.orderBy('date_time', 'desc');
+    }
 }

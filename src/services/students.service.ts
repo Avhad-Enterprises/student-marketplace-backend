@@ -645,4 +645,30 @@ export class StudentService {
 
     return { success, failed, errors };
   }
+
+  public async exportStudents(filters: any) {
+    const { search, from, to, status, risk_level, scope, ids } = filters;
+    let query = DB('students').select('*');
+
+    if (scope === 'selected' && ids) {
+      const idsArray = ids.split(',').map(Number);
+      query = query.whereIn('id', idsArray);
+    } else {
+      if (search) {
+        const term = `%${search}%`;
+        query.where(function () {
+          this.whereILike('first_name', term)
+            .orWhereILike('last_name', term)
+            .orWhereILike('email', term)
+            .orWhereILike('student_id', term);
+        });
+      }
+      if (status) query.where('account_status', status === 'active');
+      if (risk_level) query.where('risk_level', risk_level);
+      if (from) query.where('created_at', '>=', from);
+      if (to) query.where('created_at', '<=', to);
+    }
+
+    return await query.orderBy('created_at', 'desc');
+  }
 }

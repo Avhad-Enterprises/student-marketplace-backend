@@ -185,4 +185,35 @@ export class CourseService {
         cache.set(cacheKey, result);
         return result;
     }
+
+    public async exportCourses(filters: any, userRole?: string, providerId?: string | number) {
+        let query = DB('courses').where('is_deleted', false);
+
+        if (userRole === 'provider' && providerId) {
+            query = query.andWhere('provider_id', providerId);
+        }
+
+        const { search, from, to, status, category, scope, ids } = filters;
+
+        if (scope === 'selected' && ids) {
+            const idsList = ids.split(',').map(Number);
+            query = query.whereIn('id', idsList);
+        } else {
+            if (search) {
+                const term = `%${search}%`;
+                query.where(function () {
+                    this.whereILike('course_name', term)
+                        .orWhereILike('provider', term)
+                        .orWhereILike('category', term)
+                        .orWhereILike('reference_id', term);
+                });
+            }
+            if (status) query.where('status', status);
+            if (category) query.where('category', category);
+            if (from) query.where('created_at', '>=', from);
+            if (to) query.where('created_at', '<=', to);
+        }
+
+        return await query.orderBy('created_at', 'desc');
+    }
 }

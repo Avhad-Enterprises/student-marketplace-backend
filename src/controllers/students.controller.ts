@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { StudentService } from "@/services/students.service";
+import { ExportRunner, ExportOptions } from "@/utils/exportRunner";
 
 export class StudentController {
   private studentService = new StudentService();
@@ -149,6 +150,33 @@ export class StudentController {
       }
       const result = await this.studentService.importStudents(data);
       res.status(200).json({ data: result, message: 'importStudents' });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public exportStudents = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await this.studentService.exportStudents(req.query);
+      
+      const keyMap = {
+        'id': 'id',
+        'studentId': 'student_id',
+        'firstName': 'first_name',
+        'lastName': 'last_name',
+        'email': 'email',
+        'countryCode': 'country_code',
+        'phone': 'phone_number',
+        'status': 'account_status',
+        'stage': 'current_stage',
+        'risk': 'risk_level'
+      };
+
+      const result = await ExportRunner.run(data, req.query as unknown as ExportOptions, 'Students', keyMap);
+      
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename=students-export-${Date.now()}.${result.extension}`);
+      res.status(200).send(result.data);
     } catch (err) {
       next(err);
     }

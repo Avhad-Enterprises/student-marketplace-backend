@@ -21,6 +21,7 @@ export class StudentRoute implements Route {
 
     // GET all students and metrics (Admin only)
     this.router.get("/metrics", roleMiddleware(['admin']), this.studentController.getMetrics);
+    this.router.get("/export", roleMiddleware(['admin']), this.studentController.exportStudents);
     this.router.get("/", roleMiddleware(['admin']), this.studentController.getAllStudents);
 
     // GET student by ID and profile completion

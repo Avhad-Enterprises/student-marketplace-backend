@@ -22,6 +22,7 @@ class SopAssistantRoute implements Route {
         // Admin-only global views and actions
         this.router.get(`/sops`, roleMiddleware(['admin']), this.sopAssistantController.getSOPs);
         this.router.get(`/stats`, roleMiddleware(['admin']), this.sopAssistantController.getStats);
+        this.router.get(`/export`, roleMiddleware(['admin']), this.sopAssistantController.exportSOPs);
         this.router.post(`/sops/import`, roleMiddleware(['admin']), this.sopAssistantController.importSOPs);
         
         // Student-specific actions (prepared for IDOR check in controller)

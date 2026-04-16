@@ -21,6 +21,7 @@ export class CourseRoute implements Route {
 
         // Publicly accessible by authenticated users
         this.router.get("/", this.courseController.getAllCourses);
+        this.router.get("/export", roleMiddleware(['admin']), this.courseController.exportCourses);
         this.router.get("/metrics", this.courseController.getCourseMetrics);
         this.router.get("/:id", this.courseController.getCourseById);
 

@@ -1,5 +1,6 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response, NextFunction } from "express";
 import SopAssistantService from '@/services/sopAssistant.service';
+import { ExportRunner, ExportOptions } from '@/utils/exportRunner';
 
 class SopAssistantController {
     public sopAssistantService = new SopAssistantService();
@@ -149,6 +150,32 @@ class SopAssistantController {
             const settingsData = req.body;
             await this.sopAssistantService.updateSettings(settingsData);
             res.status(200).json({ message: 'updated' });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    public exportSOPs = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const data = await this.sopAssistantService.exportSOPs(req.query);
+            
+            // Map backend keys to frontend labels for display/export
+            const keyMap = {
+                'id': 'id',
+                'studentName': 'student_name',
+                'country': 'country',
+                'university': 'university',
+                'reviewStatus': 'review_status',
+                'aiConfidenceScore': 'ai_confidence_score',
+                'status': 'status',
+                'lastUpdated': 'updated_at'
+            };
+
+            const result = await ExportRunner.run(data, req.query as unknown as ExportOptions, 'SOP Assistant', keyMap);
+            
+            res.setHeader('Content-Type', result.mimeType);
+            res.setHeader('Content-Disposition', `attachment; filename=sop-assistant-export-${Date.now()}.${result.extension}`);
+            res.status(200).send(result.data);
         } catch (error) {
             next(error);
         }

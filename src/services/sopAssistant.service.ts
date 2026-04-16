@@ -174,6 +174,32 @@ class SopAssistantService {
         }
         return true;
     }
+
+    public async exportSOPs(filters: any) {
+        const { search, from, to, status, country, reviewStatus, scope, ids } = filters;
+        let query = DB('sops').select('*');
+
+        if (scope === 'selected' && ids) {
+            const idsArray = ids.split(',').map(Number);
+            query = query.whereIn('id', idsArray);
+        } else {
+            if (search && search.trim() !== '') {
+                const searchTerm = search.trim();
+                query = query.where(builder => {
+                    builder.where('student_name', 'ilike', `%${searchTerm}%`)
+                        .orWhere('country', 'ilike', `%${searchTerm}%`)
+                        .orWhere('university', 'ilike', `%${searchTerm}%`);
+                });
+            }
+            if (status) query = query.where('status', status);
+            if (country) query = query.where('country', country);
+            if (reviewStatus) query = query.where('review_status', reviewStatus);
+            if (from) query = query.where('created_at', '>=', from);
+            if (to) query = query.where('created_at', '<=', to);
+        }
+
+        return await query.orderBy('created_at', 'desc');
+    }
 }
 
 export default SopAssistantService;
