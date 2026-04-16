@@ -2,7 +2,7 @@
   "compilerOptions": {
     /* ✅ File Structure */
     "rootDir": "./src",
-    "outDir": "./dist",
+    "outDir": "./build",
 
     /* ✅ Module (IMPORTANT CHANGE) */
     "module": "commonjs",
@@ -33,5 +33,5 @@
   },
 
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "build"]
 }
