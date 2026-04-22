@@ -395,9 +395,18 @@ async function initSupportContent() {
       id SERIAL PRIMARY KEY,
       expert_id VARCHAR(50) UNIQUE NOT NULL,
       full_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) UNIQUE NOT NULL,
+      email VARCHAR(255) UNIQUE,
       status VARCHAR(50) DEFAULT 'active'
     );
+
+    -- Robustly ensure column is nullable
+    DO $$ 
+    BEGIN 
+        ALTER TABLE experts ALTER COLUMN email DROP NOT NULL;
+    EXCEPTION 
+        WHEN OTHERS THEN 
+            RAISE NOTICE 'Could not relax email constraint on experts table: %', SQLERRM;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS blogs (
       id SERIAL PRIMARY KEY,

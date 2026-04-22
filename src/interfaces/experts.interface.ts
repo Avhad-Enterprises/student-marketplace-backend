@@ -2,7 +2,7 @@ export interface Expert {
     id: number;
     expert_id: string;
     full_name: string;
-    email: string;
+    email?: string;
     phone?: string;
     specialization?: string;
     experience_years?: number;

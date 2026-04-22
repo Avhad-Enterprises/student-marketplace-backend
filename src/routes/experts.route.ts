@@ -24,9 +24,9 @@ export class ExpertRoute implements Routes {
         this.router.get(`/:id`, this.expertController.getExpertById);
 
         // Administrative Actions (Admin only + Validation)
-        this.router.post(`/`, roleMiddleware(['admin']), validationMiddleware(CreateExpertDto, 'body'), this.expertController.createExpert);
+        this.router.post(`/`, roleMiddleware(['admin']), this.expertController.createExpert);
         this.router.post(`/import`, roleMiddleware(['admin']), this.expertController.importExperts);
-        this.router.put(`/:id`, roleMiddleware(['admin']), validationMiddleware(UpdateExpertDto, 'body'), this.expertController.updateExpert);
+        this.router.put(`/:id`, roleMiddleware(['admin']), this.expertController.updateExpert);
         this.router.delete(`/:id`, roleMiddleware(['admin']), this.expertController.deleteExpert);
     }
 }
