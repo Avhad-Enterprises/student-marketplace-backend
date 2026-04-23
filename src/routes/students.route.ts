@@ -4,7 +4,7 @@ import Route from "@/interfaces/routes.interface";
 import authMiddleware from "@/middlewares/auth.middleware";
 import roleMiddleware from "@/middlewares/role.middleware";
 import validationMiddleware from "@/middlewares/validation.middleware";
-import { CreateStudentDto, UpdateStudentDto } from "@/dtos/students.dto";
+import { CreateStudentDto, UpdateStudentDto, BulkUpdateStudentDto } from "@/dtos/students.dto";
 
 export class StudentRoute implements Route {
   public path = "/api/students";
@@ -33,6 +33,7 @@ export class StudentRoute implements Route {
     this.router.post("/import", roleMiddleware(['admin']), this.studentController.importStudents);
 
     // PUT update student (Admin only + Validation)
+    this.router.put("/bulk-update", roleMiddleware(['admin']), validationMiddleware(BulkUpdateStudentDto, 'body'), this.studentController.bulkUpdateStudents);
     this.router.put("/:id", roleMiddleware(['admin']), validationMiddleware(UpdateStudentDto, 'body'), this.studentController.updateStudent);
 
     // DELETE student and dummy students (Admin only)

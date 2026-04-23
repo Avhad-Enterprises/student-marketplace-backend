@@ -346,7 +346,7 @@ export class StudentService {
       console.error("Logging failed", e);
     }
 
-    const payload: any = {
+    const fullPayload: any = {
       first_name: studentData.firstName,
       last_name: studentData.lastName,
       email: studentData.email,
@@ -362,7 +362,7 @@ export class StudentService {
       risk_level: studentData.riskLevel,
       lead_source: studentData.leadSource,
       campaign: studentData.campaign,
-      country_preferences: JSON.stringify(studentData.countryPreferences || []),
+      country_preferences: studentData.countryPreferences ? JSON.stringify(studentData.countryPreferences) : undefined,
       notes: studentData.notes,
       account_status: studentData.accountStatus,
       
@@ -381,10 +381,9 @@ export class StudentService {
       test_scores: studentData.testScores,
       
       student_intent: studentData.studentIntent,
-      interested_services: JSON.stringify(studentData.interestedServices || []),
+      interested_services: studentData.interestedServices ? JSON.stringify(studentData.interestedServices) : undefined,
       communication_preference: studentData.communicationPreference,
       timezone: studentData.timezone,
-
 
       // Planning & Application fields
       planning_countries: studentData.planningCountries,
@@ -563,6 +562,11 @@ export class StudentService {
       updated_at: DB.fn.now(),
     };
 
+    // Filter out undefined fields to support partial updates
+    const payload = Object.fromEntries(
+      Object.entries(fullPayload).filter(([_, v]) => v !== undefined)
+    );
+
     try {
       const updated = await DB('students').where('id', id).update(payload).returning('*');
       return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
@@ -575,6 +579,26 @@ export class StudentService {
       }
       throw new HttpException(500, 'Failed to update student. Please check the data and try again.');
     }
+  }
+
+  // BULK UPDATE students
+  public async bulkUpdate(ids: number[], data: any) {
+    const fullPayload: any = {
+      account_status: data.accountStatus,
+      current_stage: data.currentStage,
+      assigned_counselor: data.assignedCounselor,
+      risk_level: data.riskLevel,
+      updated_at: DB.fn.now(),
+    };
+
+    const payload = Object.fromEntries(
+      Object.entries(fullPayload).filter(([_, v]) => v !== undefined)
+    );
+
+    if (Object.keys(payload).length === 0) return 0;
+
+    const updatedCount = await DB('students').whereIn('id', ids).update(payload);
+    return updatedCount;
   }
 
   // DELETE student

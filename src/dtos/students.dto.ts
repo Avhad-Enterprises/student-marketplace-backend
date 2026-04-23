@@ -493,3 +493,25 @@ export class UpdateStudentDto {
     @IsOptional() public predepWeatherAwareness?: any;
     @IsString() @IsOptional() public predepNotes?: string;
 }
+
+export class BulkUpdateStudentDto {
+    @IsArray()
+    @IsNumber({}, { each: true })
+    public ids!: number[];
+
+    @IsBoolean()
+    @IsOptional()
+    public accountStatus?: boolean;
+
+    @IsString()
+    @IsOptional()
+    public currentStage?: string;
+
+    @IsString()
+    @IsOptional()
+    public assignedCounselor?: string;
+
+    @IsString()
+    @IsOptional()
+    public riskLevel?: string;
+}

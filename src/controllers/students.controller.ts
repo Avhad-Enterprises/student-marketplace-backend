@@ -389,4 +389,15 @@ export class StudentController {
       next(err);
     }
   };
+
+  // PUT /api/students/bulk-update
+  public bulkUpdateStudents = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { ids, ...data } = req.body;
+      const updatedCount = await this.studentService.bulkUpdate(ids, data);
+      res.json({ message: `Successfully updated ${updatedCount} students`, count: updatedCount });
+    } catch (err) {
+      next(err);
+    }
+  };
 }
