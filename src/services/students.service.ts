@@ -1,4 +1,5 @@
 import DB from "@/database";
+import HttpException from "@/exceptions/HttpException";
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -318,8 +319,21 @@ export class StudentService {
     } as any;
 
     console.log('students.service.create - inserting payload:', payload);
-    const inserted = await DB('students').insert(payload).returning(['id', 'student_id']);
-    return Array.isArray(inserted) ? inserted[0] : inserted;
+    try {
+      const inserted = await DB('students').insert(payload).returning(['id', 'student_id']);
+      return Array.isArray(inserted) ? inserted[0] : inserted;
+    } catch (error: any) {
+      if (error.code === '23505') {
+        if (error.detail?.includes('email')) {
+          throw new HttpException(409, 'A student with this email already exists.');
+        }
+        if (error.detail?.includes('student_id')) {
+          throw new HttpException(409, 'A student with this ID already exists.');
+        }
+        throw new HttpException(409, 'A student with this record already exists.');
+      }
+      throw new HttpException(500, 'Failed to create student. Please check the data and try again.');
+    }
   }
 
   // UPDATE student
@@ -549,8 +563,18 @@ export class StudentService {
       updated_at: DB.fn.now(),
     };
 
-    const updated = await DB('students').where('id', id).update(payload).returning('*');
-    return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
+    try {
+      const updated = await DB('students').where('id', id).update(payload).returning('*');
+      return Array.isArray(updated) && updated.length > 0 ? updated[0] : null;
+    } catch (error: any) {
+      if (error.code === '23505') {
+        if (error.detail?.includes('email')) {
+          throw new HttpException(409, 'A student with this email already exists.');
+        }
+        throw new HttpException(409, 'Update failed: A student with this unique record already exists.');
+      }
+      throw new HttpException(500, 'Failed to update student. Please check the data and try again.');
+    }
   }
 
   // DELETE student
@@ -638,7 +662,13 @@ export class StudentService {
           success++;
         } catch (error: any) {
           failed++;
-          errors.push(`Row ${success + failed}: ${error.message}`);
+          let msg = error.message;
+          if (error.code === '23505') {
+            msg = error.detail?.includes('email') ? 'A student with this email already exists.' : 'Duplicate record violation';
+          } else if (error.message && error.message.includes('insert into')) {
+            msg = 'Failed to create student due to a database error.';
+          }
+          errors.push(`Row ${success + failed}: ${msg}`);
         }
       }
     });

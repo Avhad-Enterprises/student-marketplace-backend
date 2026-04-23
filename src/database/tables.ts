@@ -94,7 +94,9 @@ export async function initializeTables() {
     await initStatusHistory();
     // 15. Reporting & Analytics
     await initReporting();
-    // 16. Performance Hardening (Indexing)
+    // 16. Documents & Storage
+    await initDocuments();
+    // 17. Performance Hardening (Indexing)
     await initPerformanceIndexes();
 
     logger.info("Database initialization completed successfully");
@@ -1098,6 +1100,35 @@ async function initStatusHistory() {
   `);
 }
 import { initializeReportsTable } from "@/reporting/models/reports.schema";
+
+async function initDocuments() {
+  await DB.raw(`
+    CREATE TABLE IF NOT EXISTS documents (
+      id SERIAL PRIMARY KEY,
+      student_db_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      category VARCHAR(100),
+      status VARCHAR(50) DEFAULT 'active',
+      file_type VARCHAR(255),
+      file_size BIGINT,
+      uploaded_by VARCHAR(255),
+      file_url TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Ensure indexes for fast lookups
+    CREATE INDEX IF NOT EXISTS idx_documents_student ON documents (student_db_id);
+    CREATE INDEX IF NOT EXISTS idx_documents_category ON documents (category);
+
+    -- Safety: Alter existing columns if they were created with VARCHAR(50)
+    ALTER TABLE documents ALTER COLUMN file_type TYPE VARCHAR(255);
+    ALTER TABLE documents ALTER COLUMN file_url TYPE TEXT;
+    ALTER TABLE documents ALTER COLUMN name TYPE VARCHAR(255);
+    ALTER TABLE documents ALTER COLUMN uploaded_by TYPE VARCHAR(255);
+    ALTER TABLE documents ALTER COLUMN category TYPE VARCHAR(100);
+  `);
+}
 
 async function initReporting() {
   await initializeReportsTable();

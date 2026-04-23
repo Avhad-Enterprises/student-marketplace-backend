@@ -5,6 +5,9 @@ import authMiddleware from "@/middlewares/auth.middleware";
 import roleMiddleware from "@/middlewares/role.middleware";
 import validationMiddleware from "@/middlewares/validation.middleware";
 import { CreateDocumentDto, UpdateDocumentDto } from "@/dtos/documents.dto";
+import multer from "multer";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 export class DocumentRoute implements Route {
   public path = "/api/documents";
@@ -21,6 +24,8 @@ export class DocumentRoute implements Route {
 
     // Publicly accessible by authenticated users (specific to the student)
     this.router.get("/:studentDbId", this.documentController.getDocumentsByStudentId);
+    this.router.get("/fetch/:id", this.documentController.getDocumentUrl);
+    this.router.post("/upload", upload.single("file"), this.documentController.uploadDocument);
 
     // Administrative Actions (Admin only + Validation)
     this.router.post("/", roleMiddleware(['admin']), validationMiddleware(CreateDocumentDto, 'body'), this.documentController.createDocument);

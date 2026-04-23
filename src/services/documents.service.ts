@@ -6,7 +6,7 @@ export class DocumentService {
   }
 
   public async findById(id: string | number) {
-    const row = await DB("documents").where("id", id).first();
+    const row = await DB("documents").where("id", Number(id)).first();
     return row || null;
   }
 
@@ -38,12 +38,12 @@ export class DocumentService {
       updated_at: DB.fn.now(),
     };
 
-    const res = await DB("documents").where("id", id).update(updateObj).returning("*");
+    const res = await DB("documents").where("id", Number(id)).update(updateObj).returning("*");
     return res && res[0] ? res[0] : null;
   }
 
   public async delete(id: string | number) {
-    const res = await DB("documents").where("id", id).del().returning("*");
-    return !!(res && res.length > 0);
+    const res = await DB("documents").where("id", Number(id)).del();
+    return res > 0;
   }
 }

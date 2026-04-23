@@ -10,6 +10,12 @@ const validateEnv = () => {
     DB_PASSWORD: str(),
     DB_DATABASE: str(),
     JWT_SECRET: str(),
+    MINIO_ACCESS_KEY: str(),
+    MINIO_SECRET_KEY: str(),
+    MINIO_BUCKET_NAME: str(),
+    MINIO_ENDPOINT: str(),
+    MINIO_PORT: port(),
+    MINIO_USE_SSL: str({ choices: ['true', 'false'] }),
   });
 };
 
