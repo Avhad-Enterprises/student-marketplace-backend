@@ -28,13 +28,13 @@ async function fixDocumentsSchema() {
       console.log('Table "documents" created successfully.');
     } else {
       console.log('Documents table exists. Altering column types...');
-      await DB.raw(\`
+      await DB.raw(`
         ALTER TABLE documents ALTER COLUMN file_type TYPE VARCHAR(255);
         ALTER TABLE documents ALTER COLUMN file_url TYPE TEXT;
         ALTER TABLE documents ALTER COLUMN name TYPE VARCHAR(255);
         ALTER TABLE documents ALTER COLUMN uploaded_by TYPE VARCHAR(255);
         ALTER TABLE documents ALTER COLUMN category TYPE VARCHAR(100);
-      \`);
+      `);
       console.log('Table "documents" columns updated successfully.');
     }
     

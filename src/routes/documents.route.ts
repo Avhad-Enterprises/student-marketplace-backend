@@ -22,10 +22,12 @@ export class DocumentRoute implements Route {
     // Apply authMiddleware to all document routes
     this.router.use(authMiddleware);
 
-    // Publicly accessible by authenticated users (specific to the student)
-    this.router.get("/:studentDbId", this.documentController.getDocumentsByStudentId);
-    this.router.get("/fetch/:id", this.documentController.getDocumentUrl);
+    // Specific routes first
     this.router.post("/upload", upload.single("file"), this.documentController.uploadDocument);
+    this.router.get("/fetch/:id", this.documentController.getDocumentUrl);
+
+    // Parameterized routes next
+    this.router.get("/:studentDbId", this.documentController.getDocumentsByStudentId);
 
     // Administrative Actions (Admin only + Validation)
     this.router.post("/", roleMiddleware(['admin']), validationMiddleware(CreateDocumentDto, 'body'), this.documentController.createDocument);
