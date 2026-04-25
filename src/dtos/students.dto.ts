@@ -496,8 +496,7 @@ export class UpdateStudentDto {
 
 export class BulkUpdateStudentDto {
     @IsArray()
-    @IsNumber({}, { each: true })
-    public ids!: number[];
+    public ids!: (number | string)[];
 
     @IsBoolean()
     @IsOptional()

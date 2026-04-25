@@ -98,6 +98,8 @@ export async function initializeTables() {
     await initDocuments();
     // 17. Performance Hardening (Indexing)
     await initPerformanceIndexes();
+    // 18. Roles & Users (Security)
+    await initRolesAndUsers();
 
     logger.info("Database initialization completed successfully");
   } catch (err) {
@@ -1132,4 +1134,37 @@ async function initDocuments() {
 
 async function initReporting() {
   await initializeReportsTable();
+}
+async function initRolesAndUsers() {
+  await DB.raw(`
+    CREATE TABLE IF NOT EXISTS roles (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) UNIQUE NOT NULL,
+      permissions JSONB DEFAULT '{}',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    ALTER TABLE roles ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT FALSE;
+    ALTER TABLE roles ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
+
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      full_name VARCHAR(255),
+      first_name VARCHAR(255),
+      last_name VARCHAR(255),
+      role_id INTEGER REFERENCES roles(id),
+      user_type VARCHAR(50) DEFAULT 'admin',
+      account_status VARCHAR(50) DEFAULT 'Active',
+      is_deleted BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES roles(id);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type VARCHAR(50) DEFAULT 'admin';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
+  `);
 }

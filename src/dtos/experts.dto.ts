@@ -1,39 +1,39 @@
-// import { IsString, IsEmail, IsOptional, IsNumber, IsUrl } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsNumber, IsUrl } from 'class-validator';
 
 export class CreateExpertDto {
-    // @IsString()
+    @IsString()
     public full_name: string;
 
-    // @IsOptional()
-    // @IsEmail()
+    @IsOptional()
+    @IsEmail()
     public email?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public phone?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public specialization?: string;
 
-    // @IsNumber()
-    // @IsOptional()
+    @IsNumber()
+    @IsOptional()
     public experience_years?: number;
 
-    // @IsNumber()
-    // @IsOptional()
+    @IsNumber()
+    @IsOptional()
     public rating?: number;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public status?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public avatar_url?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public bio?: string;
 
     constructor() {
@@ -42,39 +42,39 @@ export class CreateExpertDto {
 }
 
 export class UpdateExpertDto {
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public full_name?: string;
 
-    // @IsEmail()
-    // @IsOptional()
+    @IsEmail()
+    @IsOptional()
     public email?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public phone?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public specialization?: string;
 
-    // @IsNumber()
-    // @IsOptional()
+    @IsNumber()
+    @IsOptional()
     public experience_years?: number;
 
-    // @IsNumber()
-    // @IsOptional()
+    @IsNumber()
+    @IsOptional()
     public rating?: number;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public status?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public avatar_url?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public bio?: string;
 }

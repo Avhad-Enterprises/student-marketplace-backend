@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import dotenv from "dotenv";
 dotenv.config();
 // console.log("!!! SERVER.TS STARTED !!!"); // Removing debug log

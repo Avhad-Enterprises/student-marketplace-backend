@@ -11,7 +11,28 @@ class AuthService {
     public async login(userData: LoginUserDto): Promise<{ cookie: string; findUser: User; token: string }> {
         if (!userData.email || !userData.password) throw new HttpException(400, "Email and password are required");
 
-        const findUser: User = await DB('users').where({ email: userData.email }).first();
+        const findUser = await DB('users')
+            .leftJoin('roles', 'users.role_id', 'roles.id')
+            .select(
+                'users.*', 
+                'roles.name as role_name', 
+                'roles.permissions as role_permissions'
+            )
+            .where({ 'users.email': userData.email })
+            .first();
+
+        if (findUser) {
+            // Map the flat result back to a nested object structure that the frontend expects
+            // We use default values if some columns are missing from older schema versions
+            findUser.role = {
+                id: findUser.role_id,
+                name: findUser.role_name || 'Admin', // Fallback to Admin if role name is missing
+                permissions: findUser.role_permissions || {},
+                is_system: findUser.role_is_system ?? true // Fallback to true if column missing
+            };
+            findUser.permissions = findUser.role_permissions || {};
+        }
+
         if (!findUser) throw new HttpException(401, `Account with email ${userData.email} not found`);
 
         // In a real scenario, use bcrypt.compare

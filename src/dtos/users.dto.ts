@@ -1,58 +1,58 @@
-// import { IsEmail, IsString, IsOptional, MinLength } from 'class-validator';
+import { IsEmail, IsString, IsOptional, MinLength } from 'class-validator';
 
 export class CreateUserDto {
-    // @IsEmail()
+    @IsEmail()
     public email!: string;
 
-    // @IsString()
-    // @MinLength(8)
+    @IsString()
+    @MinLength(8)
     public password!: string;
 
-    // @IsString()
+    @IsString()
     public full_name!: string;
 
-    // @IsString()
+    @IsString()
     public user_type!: string;
 }
 
 export class UpdateUserDto {
-    // @IsEmail()
-    // @IsOptional()
+    @IsEmail()
+    @IsOptional()
     public email?: string;
 
-    // @IsString()
-    // @MinLength(8)
-    // @IsOptional()
+    @IsString()
+    @MinLength(8)
+    @IsOptional()
     public password?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public full_name?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public first_name?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public last_name?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public user_type?: string;
 
-    // @IsString()
-    // @IsOptional()
+    @IsString()
+    @IsOptional()
     public account_status?: string;
 
-    // @IsOptional()
+    @IsOptional()
     public role_id?: number | string;
 }
 
 export class LoginUserDto {
-    // @IsEmail()
+    @IsEmail()
     public email!: string;
 
-    // @IsString()
+    @IsString()
     public password!: string;
 }

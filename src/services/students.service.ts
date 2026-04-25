@@ -582,7 +582,7 @@ export class StudentService {
   }
 
   // BULK UPDATE students
-  public async bulkUpdate(ids: number[], data: any) {
+  public async bulkUpdate(ids: (number | string)[], data: any) {
     const fullPayload: any = {
       account_status: data.accountStatus,
       current_stage: data.currentStage,
