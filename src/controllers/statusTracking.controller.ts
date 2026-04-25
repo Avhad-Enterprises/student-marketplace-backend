@@ -18,13 +18,17 @@ export class StatusTrackingController {
   // GET all status tracking
   public getAllStatusTracking = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { stage, risk_level, search } = req.query;
+      const { stage, risk_level, search, page, limit, sort, order } = req.query;
 
-      const result = await this.statusTrackingService.findAll(
-        stage as string,
-        risk_level as string,
-        search as string
-      );
+      const result = await this.statusTrackingService.findAll({
+        stage: stage as string,
+        risk_level: risk_level as string,
+        search: search as string,
+        page: page ? parseInt(page as string) : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        sort: sort as string,
+        order: (order as string) === 'asc' ? 'asc' : 'desc'
+      });
 
       res.json(result);
     } catch (err) {

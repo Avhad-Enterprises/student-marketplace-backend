@@ -9,9 +9,11 @@ export class StatusTrackingService {
       .orderBy("sh.created_at", "desc");
   }
 
-  public async findAll(stage?: string, risk_level?: string, search?: string) {
-    // Refactor N+1 query problem by using JOIN with DISTINCT ON to get the latest status for all students in one go
-    const studentsWithStatus = await DB("students as s")
+  public async findAll(params: { stage?: string; risk_level?: string; search?: string; limit?: number; page?: number; sort?: string; order?: 'asc' | 'desc' }) {
+    const { stage, risk_level, search, limit = 10, page = 1, sort = 'last_update', order = 'desc' } = params;
+    const offset = (page - 1) * limit;
+
+    const baseQuery = DB("students as s")
       .leftJoin(
         DB("status_history")
           .select("student_db_id", "sub_status", "created_at")
@@ -22,6 +24,23 @@ export class StatusTrackingService {
         "s.id",
         "sh.student_db_id"
       )
+      .modify((qb) => {
+        if (stage) qb.where("s.current_stage", stage);
+        if (risk_level) qb.where("s.risk_level", risk_level);
+        if (search) {
+          const like = `%${search}%`;
+          qb.where(function () {
+            this.where("s.first_name", "ILIKE", like).orWhere("s.last_name", "ILIKE", like).orWhere("s.student_id", "ILIKE", like);
+          });
+        }
+      });
+
+    // Get total count
+    const countResult = await baseQuery.clone().clear('select').clear('order').count("* as count").first();
+    const total = parseInt((countResult as any).count || "0");
+
+    // Get paginated data
+    const data = await baseQuery
       .select(
         "s.id as db_id",
         "s.student_id",
@@ -35,21 +54,26 @@ export class StatusTrackingService {
         "sh.created_at as last_update"
       )
       .modify((qb) => {
-        if (stage) qb.where("s.current_stage", stage);
-        if (risk_level) qb.where("s.risk_level", risk_level);
-        if (search) {
-          const like = `%${search}%`;
-          qb.where(function () {
-            this.where("s.first_name", "ILIKE", like).orWhere("s.last_name", "ILIKE", like).orWhere("s.student_id", "ILIKE", like);
-          });
+        if (sort === 'last_update') {
+          qb.orderBy("sh.created_at", order);
+        } else if (sort === 'stage') {
+          qb.orderBy("s.current_stage", order);
+        } else {
+          qb.orderBy(`s.${sort}`, order);
         }
-      });
+      })
+      .limit(limit)
+      .offset(offset);
 
-    return studentsWithStatus.sort((a: any, b: any) => {
-      if (!a.last_update) return 1;
-      if (!b.last_update) return -1;
-      return new Date(b.last_update).getTime() - new Date(a.last_update).getTime();
-    });
+    return {
+      data,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   public async updateStatus(studentDbId: number, stage: string, subStatus: string, notes: string, changedBy: string) {
