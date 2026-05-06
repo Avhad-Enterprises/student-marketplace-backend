@@ -51,11 +51,17 @@ export interface SystemSettings {
     allow_concurrent_sessions?: boolean;
     enable_sso?: boolean;
     enable_google_login?: boolean;
+    enable_microsoft_login?: boolean;
+    enable_otp_login?: boolean;
+    notify_on_lockout?: boolean;
+    admin_notify_on_lockout?: boolean;
 
     // People & Identity
     manual_admin_approval?: boolean;
     auto_approve_hours?: number;
     verification_expiry_days?: number;
+    account_lifecycle_states?: string;
+    data_visibility_rules?: string;
     
     // Document Access Rules
     document_access_roles?: string; // JSON string array

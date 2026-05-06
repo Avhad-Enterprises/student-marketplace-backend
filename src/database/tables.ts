@@ -139,6 +139,13 @@ async function initSystemSettings() {
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS failed_login_threshold INTEGER DEFAULT 5;
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS webhook_failure_threshold INTEGER DEFAULT 10;
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS email_bounce_threshold INTEGER DEFAULT 15;
+    
+    -- Login Policy Core Fields
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS max_login_attempts INTEGER DEFAULT 5;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS lockout_duration_minutes INTEGER DEFAULT 30;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS allow_concurrent_sessions BOOLEAN DEFAULT TRUE;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS enable_sso BOOLEAN DEFAULT FALSE;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS enable_google_login BOOLEAN DEFAULT TRUE;
 
     -- Figma Redesign Fields: Security & Sessions
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS enforce_2fa_admins BOOLEAN DEFAULT FALSE;
@@ -156,9 +163,16 @@ async function initSystemSettings() {
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS backup_frequency VARCHAR(50) DEFAULT 'Daily';
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS backup_retention_days INTEGER DEFAULT 30;
 
-    -- Feature Flags Expanded
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS enable_beta_features BOOLEAN DEFAULT FALSE;
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS environment_scope VARCHAR(50) DEFAULT 'Production';
+    
+    -- Login Policy Fields
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS enable_microsoft_login BOOLEAN DEFAULT FALSE;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS enable_otp_login BOOLEAN DEFAULT FALSE;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS notify_on_lockout BOOLEAN DEFAULT TRUE;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS admin_notify_on_lockout BOOLEAN DEFAULT TRUE;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS account_lifecycle_states JSONB DEFAULT '[{"id":"state_draft","title":"Draft","description":"Initial state when profile is created","color":"#94a3b8","initial":"D"},{"id":"state_pending","title":"Pending Verification","description":"Awaiting email/phone verification","color":"#f59e0b","initial":"P"},{"id":"state_active","title":"Active","description":"Verified and active account","color":"#10b981","initial":"A"},{"id":"state_suspended","title":"Suspended","description":"Temporarily suspended account","color":"#ef4444","initial":"S"},{"id":"state_rejected","title":"Rejected","description":"Application rejected","color":"#dc2626","initial":"R"},{"id":"state_archived","title":"Archived","description":"Archived or closed account","color":"#6b7280","initial":"A"}]'::JSONB;
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS data_visibility_rules JSONB DEFAULT '[{"id":"rule_phone_experts","field":"Phone Number","roles":["Expert"]},{"id":"rule_email_counselors","field":"Email Address","roles":["Counselor"]}]'::JSONB;
     
     INSERT INTO system_settings (id, platform_name)
     SELECT 1, 'Student Marketplace' WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE id = 1);
@@ -1147,6 +1161,7 @@ async function initRolesAndUsers() {
 
     ALTER TABLE roles ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT FALSE;
     ALTER TABLE roles ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
+    ALTER TABLE roles ADD COLUMN IF NOT EXISTS security_rules JSONB DEFAULT '{}';
 
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,

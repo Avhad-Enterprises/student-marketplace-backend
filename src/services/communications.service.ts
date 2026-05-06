@@ -1,4 +1,9 @@
 import DB from "@/database";
+import { EmailSendingService } from "@/communications/services/email-sending.service";
+import { IntegrationsService } from "@/communications/services/integrations.service";
+
+const emailSendingService = new EmailSendingService();
+const integrationsService = new IntegrationsService();
 
 export class CommunicationService {
   public async findByStudentId(studentDbId: string | number) {
@@ -27,7 +32,34 @@ export class CommunicationService {
     };
 
     const res = await DB("communications").insert(insertObj).returning("*");
-    return res && res[0] ? res[0] : null;
+    const communication = res && res[0] ? res[0] : null;
+
+    // Trigger actual email sending if type is Email
+    if (communication && communication.type.toLowerCase() === 'email') {
+      try {
+        // Fetch student email
+        const student = await DB("students").where("id", communication.student_db_id).first();
+        if (student && student.email) {
+          // Send email
+          await emailSendingService.sendEmail({
+            to: student.email,
+            subject: communicationData.subject || "Message from Student Marketplace",
+            html: communication.content,
+            text: communication.content.replace(/<[^>]*>?/gm, '')
+          });
+          
+          // Update status to sent (if it wasn't already)
+          await DB("communications").where("id", communication.id).update({ status: 'sent' });
+          communication.status = 'sent';
+        }
+      } catch (error) {
+        console.error('Failed to send email for communication:', error);
+        await DB("communications").where("id", communication.id).update({ status: 'failed' });
+        communication.status = 'failed';
+      }
+    }
+
+    return communication;
   }
 
   public async update(id: string | number, communicationData: any) {

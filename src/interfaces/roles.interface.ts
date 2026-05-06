@@ -3,6 +3,7 @@ export interface Role {
     name: string;
     description?: string;
     permissions: any;
+    security_rules?: any;
     created_at?: Date;
     updated_at?: Date;
 }

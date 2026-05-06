@@ -26,6 +26,12 @@ class SystemSettingsService {
         if (typeof settings.feature_flags === 'string') {
             try { settings.feature_flags = JSON.parse(settings.feature_flags); } catch (e) { settings.feature_flags = {}; }
         }
+        if (typeof settings.account_lifecycle_states === 'string') {
+            try { settings.account_lifecycle_states = JSON.parse(settings.account_lifecycle_states); } catch (e) { settings.account_lifecycle_states = []; }
+        }
+        if (typeof settings.data_visibility_rules === 'string') {
+            try { settings.data_visibility_rules = JSON.parse(settings.data_visibility_rules); } catch (e) { settings.data_visibility_rules = []; }
+        }
 
         const { stripe_secret_key, aws_secret_key, smtp_pass, ...safeSettings } = settings;
         return safeSettings;
@@ -47,6 +53,12 @@ class SystemSettingsService {
         }
         if (cleanData.feature_flags && typeof cleanData.feature_flags === 'object') {
             cleanData.feature_flags = JSON.stringify(cleanData.feature_flags);
+        }
+        if (cleanData.account_lifecycle_states && Array.isArray(cleanData.account_lifecycle_states)) {
+            cleanData.account_lifecycle_states = JSON.stringify(cleanData.account_lifecycle_states);
+        }
+        if (cleanData.data_visibility_rules && Array.isArray(cleanData.data_visibility_rules)) {
+            cleanData.data_visibility_rules = JSON.stringify(cleanData.data_visibility_rules);
         }
 
         const existing = await DB('system_settings').first();

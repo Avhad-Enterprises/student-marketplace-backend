@@ -12,7 +12,27 @@ export class CreateUserDto {
     public full_name!: string;
 
     @IsString()
+    @IsOptional()
+    public first_name?: string;
+
+    @IsString()
+    @IsOptional()
+    public last_name?: string;
+
+    @IsString()
     public user_type!: string;
+
+    @IsString()
+    @IsOptional()
+    public account_status?: string;
+
+    @IsOptional()
+    public role_id?: number | string;
+}
+
+export class InviteUserDto {
+    @IsEmail()
+    public email!: string;
 }
 
 export class UpdateUserDto {

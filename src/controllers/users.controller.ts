@@ -1,9 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import UserService from '../services/users.service';
 import { User } from '../interfaces/users.interface';
+import { EmailSendingService } from '../communications/services/email-sending.service';
 
 class UserController {
     public userService = new UserService();
+    public emailSendingService = new EmailSendingService();
 
     /**
      * Create a new user
@@ -82,6 +84,38 @@ class UserController {
             }
             await this.userService.resetUserPassword(userId, password);
             res.status(200).json({ message: 'Password reset successfully' });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    /**
+     * Invite a new user via email
+     */
+    public inviteUser = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { email } = req.body;
+            
+            // Generate the setup-account link
+            // In a real scenario, this might include a token
+            const setupLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/setup-account?email=${encodeURIComponent(email)}`;
+            
+            const emailContent = `
+                <h2>You have been invited!</h2>
+                <p>You have been invited to join the Student Marketplace platform.</p>
+                <p>Please click the link below to set up your account:</p>
+                <a href="${setupLink}" style="padding: 10px 20px; background-color: #0f172b; color: white; text-decoration: none; border-radius: 8px;">Set Up Account</a>
+                <p>If you cannot click the button, copy and paste this link: ${setupLink}</p>
+            `;
+
+            await this.emailSendingService.sendEmail({
+                to: email,
+                subject: 'Invitation to join Student Marketplace',
+                html: emailContent,
+                text: `You have been invited to join Student Marketplace. Set up your account here: ${setupLink}`
+            });
+
+            res.status(200).json({ message: 'Invitation sent successfully' });
         } catch (error) {
             next(error);
         }

@@ -90,4 +90,50 @@ export class IntegrationsService {
 
     return null;
   }
+
+  /**
+   * Update or create integration configuration
+   */
+  async updateConfig(type: 'email' | 'sms' | 'whatsapp', provider: string, config: any, eventId?: number | null): Promise<IntegrationConfig> {
+    const effectiveEventId = (eventId === 0 || !eventId) ? null : eventId;
+    
+    const existing = await db('integration_configs')
+      .where({
+        event_id: effectiveEventId,
+        type
+      })
+      .first();
+
+    const configData = {
+      event_id: effectiveEventId,
+      type,
+      provider,
+      config: typeof config === 'string' ? config : JSON.stringify(config),
+      is_enabled: true,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existing) {
+      await db('integration_configs')
+        .where({ id: existing.id })
+        .update(configData);
+      
+      return {
+        ...existing,
+        ...configData,
+        config: typeof config === 'string' ? JSON.parse(config) : config
+      };
+    } else {
+      const [newId] = await db('integration_configs').insert({
+        ...configData,
+        created_at: new Date().toISOString()
+      }).returning('id');
+
+      const inserted = await db('integration_configs').where({ id: typeof newId === 'object' ? newId.id : newId }).first();
+      return {
+        ...inserted,
+        config: typeof inserted.config === 'string' ? JSON.parse(inserted.config) : inserted.config
+      };
+    }
+  }
 }

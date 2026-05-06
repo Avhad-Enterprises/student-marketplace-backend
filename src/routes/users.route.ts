@@ -4,7 +4,7 @@ import Route from '../interfaces/routes.interface';
 import authMiddleware from '../middlewares/auth.middleware';
 import roleMiddleware from '../middlewares/role.middleware';
 import validationMiddleware from '../middlewares/validation.middleware';
-import { CreateUserDto, UpdateUserDto } from '../dtos/users.dto';
+import { CreateUserDto, UpdateUserDto, InviteUserDto } from '../dtos/users.dto';
 
 class UserRoute implements Route {
     public path = '/api/users';
@@ -31,6 +31,7 @@ class UserRoute implements Route {
         
         this.router.delete('/:id', this.userController.deleteUser);
         this.router.post('/:id/reset-password', this.userController.resetUserPassword);
+        this.router.post('/invite', validationMiddleware(InviteUserDto, 'body'), this.userController.inviteUser);
     }
 }
 

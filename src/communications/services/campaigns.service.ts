@@ -1,5 +1,7 @@
 import db from '@/database';
 import { EmailTemplatesService } from './email-templates.service';
+import { EmailSendingService } from './email-sending.service';
+import { CommunicationService } from '@/services/communications.service';
 
 export interface Campaign {
   id: number;
@@ -58,7 +60,10 @@ export interface UpdateCampaignInput {
 }
 
 export interface AudienceRule {
-  type: 'all' | 'vip' | 'not_checked_in' | 'checked_in' | 'ticket_type' | 'custom';
+  type?: 'all' | 'vip' | 'not_checked_in' | 'checked_in' | 'ticket_type' | 'custom';
+  source?: 'segment' | 'event';
+  segment_id?: string | number;
+  event_id?: string | number;
   ticket_ids?: number[];
   custom_filter?: any;
 }
@@ -294,8 +299,21 @@ export class CampaignsService {
   }
 
   // Resolve audience based on rules
-  async resolveAudience(eventId: number | null | undefined, audienceRule: AudienceRule): Promise<{ id: number; name: string; email?: string; phone?: string; ticket_name?: string }[]> {
+  async resolveAudience(eventId: number | null | undefined, audienceRule: AudienceRule): Promise<{ id: number; name: string; email?: string; phone?: string; ticket_name?: string; student_id?: number }[]> {
     const effectiveEventId = (eventId === 0 || !eventId) ? null : eventId;
+
+    if (audienceRule.source === 'segment' && audienceRule.segment_id) {
+       const members = await db('audience_segment_members as sm')
+         .join('students as s', 'sm.student_db_id', 's.id')
+         .where('sm.segment_id', audienceRule.segment_id)
+         .select(
+           's.id as student_id',
+           db.raw("CONCAT(s.first_name, ' ', s.last_name) as name"),
+           's.email',
+           's.phone'
+         );
+       return members.map((m: any) => ({ ...m, id: m.student_id }));
+    }
     
     let query = db('issued_tickets as a')
       .leftJoin('tickets as t', 'a.ticket_type_id', 't.id')
@@ -384,26 +402,78 @@ export class CampaignsService {
         updated_at: db.fn.now(),
       });
 
-    // Simulated send
-    await db('campaign_recipients')
-      .where('campaign_id', campaignId)
-      .update({
-        status: 'sent',
-        sent_at: db.fn.now(),
-        updated_at: db.fn.now(),
-      });
+    // Start asynchronous processing
+    this.processCampaignSending(campaignId, campaign, recipients).catch(console.error);
 
-    await db('event_campaigns')
-      .where('id', campaignId)
-      .update({
-        status: 'sent',
-        sent_at: db.fn.now(),
-        sent_count: recipients.length,
-        delivered_count: recipients.length,
-        updated_at: db.fn.now(),
-      });
+    return { success: true, message: 'Campaign queued for sending', recipientCount: recipients.length };
+  }
 
-    return { success: true, message: 'Campaign sent successfully', recipientCount: recipients.length };
+  private async processCampaignSending(campaignId: number, campaign: Campaign, recipients: any[]) {
+    const emailSendingService = new EmailSendingService();
+    const communicationService = new CommunicationService();
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const recipient of recipients) {
+      if (!recipient.email) {
+        failedCount++;
+        await db('campaign_recipients').where('campaign_id', campaignId).andWhere('issued_ticket_id', recipient.id).update({ status: 'failed', error_message: 'No email address' });
+        continue;
+      }
+
+      try {
+        let subject = campaign.subject || '';
+        let content = campaign.content || '';
+        
+        // Dynamic Variable Replacement
+        const firstName = (recipient.name || '').split(' ')[0] || '';
+        subject = subject.replace(/{{name}}/g, recipient.name || '')
+                         .replace(/{{first_name}}/g, firstName)
+                         .replace(/{{email}}/g, recipient.email);
+        content = content.replace(/{{name}}/g, recipient.name || '')
+                         .replace(/{{first_name}}/g, firstName)
+                         .replace(/{{email}}/g, recipient.email);
+
+        const result = await emailSendingService.sendEmail({
+          to: recipient.email,
+          subject,
+          html: content,
+          text: content.replace(/<[^>]*>?/gm, '')
+        });
+
+        if (result.success) {
+          sentCount++;
+          await db('campaign_recipients').where('campaign_id', campaignId).andWhere('issued_ticket_id', recipient.id).update({ status: 'sent', sent_at: db.fn.now(), updated_at: db.fn.now() });
+          
+          if (recipient.student_id || recipient.id) {
+            await communicationService.create({
+              student_db_id: recipient.student_id || recipient.id,
+              type: 'Email',
+              status: 'sent',
+              subject: subject,
+              content: content,
+              sender: campaign.sender || 'System',
+            });
+          }
+        } else {
+          failedCount++;
+          await db('campaign_recipients').where('campaign_id', campaignId).andWhere('issued_ticket_id', recipient.id).update({ status: 'failed', error_message: result.error, updated_at: db.fn.now() });
+        }
+      } catch (err: any) {
+        failedCount++;
+        await db('campaign_recipients').where('campaign_id', campaignId).andWhere('issued_ticket_id', recipient.id).update({ status: 'failed', error_message: err.message, updated_at: db.fn.now() });
+      }
+    }
+
+    // Finalize campaign stats
+    await db('event_campaigns').where('id', campaignId).update({
+      status: 'sent',
+      sent_at: db.fn.now(),
+      sent_count: sentCount,
+      delivered_count: sentCount,
+      bounce_count: failedCount,
+      updated_at: db.fn.now()
+    });
   }
 
   // Schedule campaign

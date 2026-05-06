@@ -7,6 +7,10 @@ import { CommunicationSettingsController } from '../controllers/communication-se
 import { EmailTemplatesController } from '../controllers/email-templates.controller';
 import { SenderIdentitiesController } from '../controllers/sender-identities.controller';
 import { AutomationRulesController } from '../controllers/automation-rules.controller';
+import { IntegrationsController } from '../controllers/integrations.controller';
+import { CommunicationController } from '@/controllers/communications.controller';
+import authMiddleware from '@/middlewares/auth.middleware';
+import roleMiddleware from '@/middlewares/role.middleware';
 
 export class CommunicationsRoute implements Route {
   public path = '/api/communications';
@@ -19,6 +23,8 @@ export class CommunicationsRoute implements Route {
   private emailTemplatesController = new EmailTemplatesController();
   private senderIdentitiesController = new SenderIdentitiesController();
   private automationRulesController = new AutomationRulesController();
+  private integrationsController = new IntegrationsController();
+  private baseCommunicationController = new CommunicationController();
 
   constructor() {
     this.initializeRoutes();
@@ -92,6 +98,18 @@ export class CommunicationsRoute implements Route {
     this.router.post('/settings/validate', (req, res) => this.communicationSettingsController.validateSettings(req, res));
     this.router.get('/settings/quiet-hours', (req, res) => this.communicationSettingsController.getQuietHoursStatus(req, res));
     this.router.post('/settings/reset', (req, res) => this.communicationSettingsController.resetSettings(req, res));
+
+    // Integration APIs
+    this.router.get('/integrations', (req, res) => this.integrationsController.getIntegrations(req, res));
+    this.router.put('/integrations/:type', (req, res) => this.integrationsController.updateIntegration(req, res));
+    this.router.post('/integrations/test-email', (req, res) => this.integrationsController.sendTestEmail(req, res));
+
+    // Base Communication Logging (Standardized)
+    this.router.get('/:student_id', (req, res, next) => this.baseCommunicationController.getCommunicationsByStudentId(req, res, next));
+    this.router.get('/detail/:id', (req, res, next) => this.baseCommunicationController.getCommunicationById(req, res, next));
+    this.router.post('/', authMiddleware, roleMiddleware(['admin']), (req, res, next) => this.baseCommunicationController.createCommunication(req, res, next));
+    this.router.put('/:id', authMiddleware, roleMiddleware(['admin']), (req, res, next) => this.baseCommunicationController.updateCommunication(req, res, next));
+    this.router.delete('/:id', authMiddleware, roleMiddleware(['admin']), (req, res, next) => this.baseCommunicationController.deleteCommunication(req, res, next));
   }
 }
 
